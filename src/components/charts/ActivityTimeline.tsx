@@ -11,7 +11,7 @@ interface ActivityTimelineProps {
 
 export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics }) => {
   const { theme } = useUIStore();
-  
+
   // Transform daily activity data for D3
   const data = useMemo(() => {
     return Object.entries(analytics.timePatterns.dailyActivity).map(([date, count]) => ({
@@ -22,9 +22,11 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics })
 
   const ref = useD3(
     (svg) => {
-      const margin = { top: 20, right: 30, bottom: 60, left: 60 };
+      const margin = { top: 20, right: 30, bottom: 100, left: 60 };
       const width = 1000 - margin.left - margin.right;
       const height = 400 - margin.top - margin.bottom;
+      const contextHeight = 50;
+      const contextMargin = { top: height + margin.top + 40, bottom: 0 };
 
       // Color scheme based on theme
       const colors = {
@@ -33,6 +35,8 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics })
         axis: theme === 'dark' ? '#9ca3af' : '#6b7280',
         grid: theme === 'dark' ? '#374151' : '#e5e7eb',
         text: theme === 'dark' ? '#f3f4f6' : '#111827',
+        brush: theme === 'dark' ? 'rgba(96, 165, 250, 0.2)' : 'rgba(59, 130, 246, 0.2)',
+        brushHandle: theme === 'dark' ? '#60a5fa' : '#3b82f6',
       };
 
       // Clear previous content
@@ -41,9 +45,16 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics })
       // Set dimensions
       svg
         .attr('width', width + margin.left + margin.right)
-        .attr('height', height + margin.top + margin.bottom)
-        .attr('viewBox', `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
+        .attr('height', height + margin.top + margin.bottom + contextHeight + 40)
+        .attr('viewBox', `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom + contextHeight + 40}`)
         .attr('class', 'w-full h-auto');
+
+      // Create clip path for main chart
+      svg.append('defs').append('clipPath')
+        .attr('id', 'clip')
+        .append('rect')
+        .attr('width', width)
+        .attr('height', height);
 
       const g = svg.append('g')
         .attr('transform', `translate(${margin.left},${margin.top})`);
@@ -58,6 +69,15 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics })
         .nice()
         .range([height, 0]);
 
+      // Create scales for context (minimap)
+      const x2 = d3.scaleTime()
+        .domain(x.domain())
+        .range([0, width]);
+
+      const y2 = d3.scaleLinear()
+        .domain(y.domain())
+        .range([contextHeight, 0]);
+
       // Grid lines
       g.append('g')
         .attr('class', 'grid')
@@ -70,40 +90,56 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics })
         .selectAll('line')
         .style('stroke', colors.grid);
 
-      // Area
+      // Area generator
       const area = d3.area<typeof data[0]>()
         .x(d => x(d.date))
         .y0(height)
         .y1(d => y(d.count))
         .curve(d3.curveMonotoneX);
 
-      g.append('path')
-        .datum(data)
-        .attr('fill', colors.area)
-        .attr('fill-opacity', 0.1)
-        .attr('d', area);
-
-      // Line
+      // Line generator
       const line = d3.line<typeof data[0]>()
         .x(d => x(d.date))
         .y(d => y(d.count))
         .curve(d3.curveMonotoneX);
 
-      g.append('path')
+      // Context area (for minimap)
+      const area2 = d3.area<typeof data[0]>()
+        .x(d => x2(d.date))
+        .y0(contextHeight)
+        .y1(d => y2(d.count))
+        .curve(d3.curveMonotoneX);
+
+      // Create a group for elements that will be zoomed/panned
+      const focus = g.append('g')
+        .attr('class', 'focus');
+
+      // Add the area with clipping
+      const areaPath = focus.append('path')
+        .datum(data)
+        .attr('fill', colors.area)
+        .attr('fill-opacity', 0.1)
+        .attr('d', area)
+        .attr('clip-path', 'url(#clip)');
+
+      // Add the line with clipping
+      const linePath = focus.append('path')
         .datum(data)
         .attr('fill', 'none')
         .attr('stroke', colors.line)
         .attr('stroke-width', 2)
-        .attr('d', line);
+        .attr('d', line)
+        .attr('clip-path', 'url(#clip)');
 
       // X Axis
-      g.append('g')
+      const xAxis = g.append('g')
         .attr('transform', `translate(0,${height})`)
         .call(d3.axisBottom(x)
           .tickFormat(d => format(d as Date, 'MMM d'))
           .ticks(d3.timeWeek.every(1))
-        )
-        .selectAll('text')
+        );
+
+      xAxis.selectAll('text')
         .style('text-anchor', 'end')
         .attr('dx', '-.8em')
         .attr('dy', '.15em')
@@ -111,9 +147,10 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics })
         .style('fill', colors.axis);
 
       // Y Axis
-      g.append('g')
-        .call(d3.axisLeft(y))
-        .selectAll('text')
+      const yAxis = g.append('g')
+        .call(d3.axisLeft(y));
+
+      yAxis.selectAll('text')
         .style('fill', colors.axis);
 
       // Axis lines
@@ -152,9 +189,11 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics })
         .style('font-size', '12px')
         .style('color', colors.text)
         .style('pointer-events', 'none')
-        .style('box-shadow', '0 2px 4px rgba(0,0,0,0.1)');
+        .style('box-shadow', '0 2px 4px rgba(0,0,0,0.1)')
+        .style('z-index', '1000');
 
-      g.selectAll('.dot')
+      // Interactive dots with clipping
+      const dots = focus.selectAll('.dot')
         .data(data)
         .enter().append('circle')
         .attr('class', 'dot')
@@ -162,6 +201,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics })
         .attr('cy', d => y(d.count))
         .attr('r', 4)
         .attr('fill', colors.line)
+        .attr('clip-path', 'url(#clip)')
         .style('cursor', 'pointer')
         .on('mouseover', function(event, d) {
           d3.select(this).transition().duration(100).attr('r', 6);
@@ -177,6 +217,96 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics })
           d3.select(this).transition().duration(100).attr('r', 4);
           tooltip.transition().duration(500).style('opacity', 0);
         });
+
+      // Context (minimap)
+      const context = svg.append('g')
+        .attr('class', 'context')
+        .attr('transform', `translate(${margin.left},${contextMargin.top})`);
+
+      context.append('path')
+        .datum(data)
+        .attr('fill', colors.area)
+        .attr('fill-opacity', 0.1)
+        .attr('d', area2);
+
+      context.append('g')
+        .attr('transform', `translate(0,${contextHeight})`)
+        .call(d3.axisBottom(x2)
+          .tickFormat(d => format(d as Date, 'MMM'))
+          .ticks(d3.timeMonth.every(1))
+        )
+        .selectAll('text')
+        .style('fill', colors.axis);
+
+      // Brush for context
+      const brush = d3.brushX()
+        .extent([[0, 0], [width, contextHeight]])
+        .on('brush end', brushed);
+
+      const brushGroup = context.append('g')
+        .attr('class', 'brush')
+        .call(brush);
+
+      // Style the brush
+      brushGroup.selectAll('.selection')
+        .style('fill', colors.brush)
+        .style('stroke', colors.brushHandle)
+        .style('stroke-width', 1.5);
+
+      brushGroup.selectAll('.handle')
+        .style('fill', colors.brushHandle);
+
+      // Add double-click to reset
+      brushGroup.on('dblclick', function() {
+        // Reset the brush
+        brushGroup.call(brush.move, null);
+        // Reset the main chart domain to original
+        x.domain(x2.domain());
+        updateChart();
+      });
+
+
+      // Add instruction text
+      g.append('text')
+        .attr('x', width / 2)
+        .attr('y', -5)
+        .style('text-anchor', 'middle')
+        .style('font-size', '12px')
+        .style('fill', colors.text)
+        .style('opacity', 0.6)
+        .text('Use the timeline below to zoom in');
+
+      function brushed(event: d3.D3BrushEvent<unknown>) {
+        if (event.sourceEvent && event.sourceEvent.type === 'zoom') return;
+        const s = event.selection || x2.range();
+        const sArray = Array.isArray(s) ? s as [number, number] : x2.range() as [number, number];
+        x.domain([x2.invert(sArray[0]), x2.invert(sArray[1])]);
+        updateChart();
+      }
+
+      function updateChart() {
+        // Update area and line
+        areaPath.attr('d', area);
+        linePath.attr('d', line);
+
+        // Update dots
+        dots
+          .attr('cx', d => x(d.date))
+          .attr('cy', d => y(d.count));
+
+        // Update axes
+        xAxis.call(d3.axisBottom(x)
+          .tickFormat(d => format(d as Date, 'MMM d'))
+          .ticks(d3.timeWeek.every(1))
+        );
+
+        xAxis.selectAll('text')
+          .style('text-anchor', 'end')
+          .attr('dx', '-.8em')
+          .attr('dy', '.15em')
+          .attr('transform', 'rotate(-45)')
+          .style('fill', colors.axis);
+      }
 
       // Cleanup on unmount
       return () => {
