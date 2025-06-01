@@ -20,6 +20,7 @@ export const Dashboard: React.FC = () => {
 
   const chartTypes = [
     { id: 'timeline', name: 'Activity Timeline', icon: '📈' },
+    { id: 'radial', name: 'Activity Clock', icon: '🕐' },
     { id: 'heatmap', name: 'Activity Heatmap', icon: '🔥' },
     { id: 'emoji', name: 'Emoji Analysis', icon: '😊' },
     { id: 'wordcloud', name: 'Word Cloud', icon: '💬' },

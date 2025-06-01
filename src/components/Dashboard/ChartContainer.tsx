@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react';
 
 // Lazy load chart components
 const ActivityTimeline = lazy(() => import('../charts/ActivityTimeline').then(m => ({ default: m.ActivityTimeline })));
+const RadialActivityClock = lazy(() => import('../charts/RadialActivityClock').then(m => ({ default: m.RadialActivityClock })));
 
 interface ChartContainerProps {
   chartType: string;
@@ -22,6 +23,8 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
     switch (chartType) {
       case 'timeline':
         return <ActivityTimeline analytics={analytics} />;
+      case 'radial':
+        return <RadialActivityClock analytics={analytics} />;
       case 'heatmap':
         return <div className="text-center py-20 text-gray-500">Activity Heatmap - Coming Soon</div>;
       case 'emoji':
