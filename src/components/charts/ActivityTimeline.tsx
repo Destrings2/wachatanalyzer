@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useCallback } from 'react';
 import * as d3 from 'd3';
 import { ProcessedAnalytics } from '../../types';
 import { useD3 } from '../../hooks/useD3';
@@ -15,6 +15,9 @@ interface ActivityTimelineProps {
 export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, settings }) => {
   const { theme } = useUIStore();
   const [chartType, setChartType] = useState<'line' | 'bar'>('line');
+  
+  // Store brush selection (not domain) to maintain zoom state
+  const brushSelectionRef = useRef<[number, number] | null>(null);
 
   // Transform daily activity data for D3
   const data = useMemo(() => {
@@ -462,7 +465,18 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, s
         // Reset the main chart domain to original
         x.domain(x2.domain());
         updateChart();
+        // Clear stored brush selection
+        brushSelectionRef.current = null;
       });
+
+      // Apply stored brush selection if it exists
+      if (brushSelectionRef.current) {
+        // Validate that the selection is within bounds
+        const [start, end] = brushSelectionRef.current;
+        if (start >= 0 && end <= width && start < end) {
+          brushGroup.call(brush.move, brushSelectionRef.current);
+        }
+      }
 
       // Add instruction text
       g.append('text')
@@ -480,6 +494,13 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, s
         const sArray = Array.isArray(s) ? s as [number, number] : x2.range() as [number, number];
         x.domain([x2.invert(sArray[0]), x2.invert(sArray[1])]);
         updateChart();
+        
+        // Store brush selection (pixel positions)
+        if (event.selection) {
+          brushSelectionRef.current = sArray;
+        } else {
+          brushSelectionRef.current = null;
+        }
       }
 
       function updateChart() {
