@@ -7,6 +7,7 @@ import { useUIStore } from '../../stores/uiStore';
 const ActivityTimeline = lazy(() => import('../charts/ActivityTimeline').then(m => ({ default: m.ActivityTimeline })));
 const RadialActivityClock = lazy(() => import('../charts/RadialActivityClock').then(m => ({ default: m.RadialActivityClock })));
 const CallAnalysis = lazy(() => import('../charts/CallAnalysis').then(m => ({ default: m.CallAnalysis })));
+const ActivityHeatmap = lazy(() => import('../charts/ActivityHeatmap').then(m => ({ default: m.ActivityHeatmap })));
 
 interface ChartContainerProps {
   chartType: string;
@@ -30,7 +31,7 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
       case 'calls':
         return <CallAnalysis analytics={analytics} isLoading={isLoading} />;
       case 'heatmap':
-        return <div className="text-center py-20 text-gray-500">Activity Heatmap - Coming Soon</div>;
+        return <ActivityHeatmap analytics={analytics} isLoading={isLoading} />;
       case 'emoji':
         return <div className="text-center py-20 text-gray-500">Emoji Analysis - Coming Soon</div>;
       case 'wordcloud':
