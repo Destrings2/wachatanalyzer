@@ -5,16 +5,17 @@ export const useD3 = (renderChartFn: (svg: d3.Selection<SVGSVGElement, unknown, 
   const ref = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
-    if (ref.current) {
-      const svg = d3.select(ref.current);
+    const element = ref.current;
+    if (element) {
+      const svg = d3.select(element);
       renderChartFn(svg);
     }
     return () => {
-      if (ref.current) {
-        d3.select(ref.current).selectAll('*').remove();
+      if (element) {
+        d3.select(element).selectAll('*').remove();
       }
     };
-  }, dependencies);
+  }, [renderChartFn, ...dependencies]);
 
   return ref;
 };

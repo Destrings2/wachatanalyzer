@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import {
   analyzeMessageStats,
   analyzeTimePatterns,
@@ -575,9 +575,9 @@ describe('Analysis Workflows', () => {
             content: '',
             metadata: {
               hasEmoji: false,
-              emojis: undefined as any,
+              emojis: undefined as unknown as string[],
               hasUrl: false,
-              urls: undefined as any,
+              urls: undefined as unknown as string[],
               wordCount: 0,
               charCount: 0
             }

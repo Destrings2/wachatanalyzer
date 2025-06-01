@@ -30,7 +30,7 @@ export const useTheme = () => {
 
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
+  }, [setTheme, theme]);
 
   return { theme, toggleTheme };
 };

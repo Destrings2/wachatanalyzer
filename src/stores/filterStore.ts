@@ -27,8 +27,8 @@ interface FilterStore extends FilterState {
 
   // Performance monitoring
   getPerformanceStats: () => {
-    monitor: any;
-    cache: any;
+    monitor: unknown;
+    cache: unknown;
     insights: string[];
   };
 }

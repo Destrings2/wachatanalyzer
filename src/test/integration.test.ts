@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useFilterStore } from '../stores/filterStore'
-import { useChatStore } from '../stores/chatStore'
 import { parseSearchQuery, SearchQueryEvaluator } from '../utils/searchParser'
 import { analyzeChat } from '../utils/analyzer'
 import { createMockChat, createSearchTestChat } from './utils'

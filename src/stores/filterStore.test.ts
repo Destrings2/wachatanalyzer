@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useFilterStore } from './filterStore'
-import { createMockChat, createSearchTestChat } from '../test/utils'
 
 // Mock the worker since it's not available in test environment
 vi.mock('../workers/filter.worker.ts', () => ({

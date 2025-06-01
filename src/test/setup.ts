@@ -8,7 +8,7 @@ global.Worker = class Worker {
   addEventListener() {}
   removeEventListener() {}
   terminate() {}
-} as any
+} as unknown as typeof Worker
 
 // Mock URL.createObjectURL for worker imports
 global.URL.createObjectURL = vi.fn(() => 'mock-object-url')
@@ -24,6 +24,6 @@ Object.defineProperty(global, 'performance', {
 global.setTimeout = vi.fn((fn) => {
   fn()
   return 1
-}) as any
+}) as unknown as typeof setTimeout
 
 global.clearTimeout = vi.fn()

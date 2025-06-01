@@ -1,4 +1,4 @@
-import { Message, Call, ParsedChat, Participant } from '../types';
+import { Message, Call, Participant } from '../types';
 
 // Chunk size for sending results back
 const CHUNK_SIZE = 1000;
@@ -19,7 +19,7 @@ function extractEmojis(text: string): string[] {
 // Helper function to extract URLs from text
 function extractUrls(text: string): string[] {
   try {
-    const urlRegex = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/g;
+    const urlRegex = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&/=]*)/g;
     return text.match(urlRegex) || [];
   } catch {
     return [];
@@ -163,8 +163,6 @@ function sendChunk(messages: Message[], calls: Call[], chunkIndex: number, isLas
 
 async function parseWhatsAppChat(content: string): Promise<void> {
   const lines = content.split('\n');
-  const messages: Message[] = [];
-  const calls: Call[] = [];
   const participantsMap = new Map<string, Participant>();
 
   let currentMessage: {
@@ -243,7 +241,6 @@ async function parseWhatsAppChat(content: string): Promise<void> {
   let minDate = new Date();
   let maxDate = new Date(0);
   let totalMessages = 0;
-  let totalCalls = 0;
 
   // Count totals from participants
   for (const participant of participants) {

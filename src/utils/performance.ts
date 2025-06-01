@@ -4,7 +4,7 @@ interface PerformanceMetric {
   timestamp: number;
   cacheHit?: boolean;
   dataSize?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 class PerformanceMonitor {
@@ -33,7 +33,7 @@ class PerformanceMonitor {
     metadata?: {
       cacheHit?: boolean;
       dataSize?: number;
-      [key: string]: any;
+      [key: string]: unknown;
     }
   ): void {
     const duration = performance.now() - measurement.startTime;
@@ -147,7 +147,7 @@ class PerformanceMonitor {
     }
 
     const slowOperations = Object.entries(stats.averageDurationByType)
-      .filter(([_, duration]) => duration > 500)
+      .filter(([, duration]) => duration > 500)
       .sort((a, b) => b[1] - a[1]);
 
     if (slowOperations.length > 0) {
@@ -163,7 +163,7 @@ class PerformanceMonitor {
 export async function measureAsync<T>(
   name: string,
   fn: () => Promise<T>,
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 ): Promise<T> {
   const monitor = PerformanceMonitor.getInstance();
   const measurement = monitor.startMeasurement(name);
@@ -182,7 +182,7 @@ export async function measureAsync<T>(
 export function measureSync<T>(
   name: string,
   fn: () => T,
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 ): T {
   const monitor = PerformanceMonitor.getInstance();
   const measurement = monitor.startMeasurement(name);

@@ -1,23 +1,23 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { 
-  format, 
-  startOfDay, 
-  endOfDay, 
-  addMonths, 
-  subMonths, 
-  addYears, 
-  subYears, 
-  startOfYear, 
-  endOfYear, 
-  startOfMonth, 
-  endOfMonth, 
-  subDays, 
-  startOfWeek, 
-  endOfWeek, 
-  eachDayOfInterval, 
-  isSameMonth, 
-  isSameDay, 
+import {
+  format,
+  startOfDay,
+  endOfDay,
+  addMonths,
+  subMonths,
+  addYears,
+  subYears,
+  startOfYear,
+  endOfYear,
+  startOfMonth,
+  endOfMonth,
+  subDays,
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval,
+  isSameMonth,
+  isSameDay,
   isWithinInterval,
   subMonths as dateSubMonths
 } from 'date-fns';
@@ -54,11 +54,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     setCurrentViewDate(newDate);
     const monthStart = startOfMonth(newDate);
     const monthEnd = endOfMonth(newDate);
-    
+
     // Ensure we don't go outside the available date range
     const clampedStart = monthStart < dateRange[0] ? dateRange[0] : monthStart;
     const clampedEnd = monthEnd > dateRange[1] ? dateRange[1] : monthEnd;
-    
+
     setTempStartDateObj(clampedStart);
     setTempEndDateObj(clampedEnd);
   };
@@ -68,11 +68,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     setCurrentViewDate(newDate);
     const yearStart = startOfYear(newDate);
     const yearEnd = endOfYear(newDate);
-    
+
     // Ensure we don't go outside the available date range
     const clampedStart = yearStart < dateRange[0] ? dateRange[0] : yearStart;
     const clampedEnd = yearEnd > dateRange[1] ? dateRange[1] : yearEnd;
-    
+
     setTempStartDateObj(clampedStart);
     setTempEndDateObj(clampedEnd);
   };
@@ -81,7 +81,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     let start: Date, end: Date;
     const today = new Date();
     const todayEnd = endOfDay(today);
-    
+
     switch (type) {
       case 'thisYear':
         start = startOfYear(today);
@@ -104,11 +104,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         end = todayEnd;
         break;
     }
-    
+
     // Clamp to available range
     const clampedStart = start < dateRange[0] ? dateRange[0] : start;
     const clampedEnd = end > dateRange[1] ? dateRange[1] : end;
-    
+
     setTempStartDateObj(clampedStart);
     setTempEndDateObj(clampedEnd);
     setCurrentViewDate(clampedStart);
@@ -120,14 +120,14 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     const monthEnd = endOfMonth(currentViewDate);
     const calendarStart = startOfWeek(monthStart);
     const calendarEnd = endOfWeek(monthEnd);
-    
+
     return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
   };
 
   const handleDateClick = (date: Date) => {
     // Only allow dates within the available range
     if (date < dateRange[0] || date > dateRange[1]) return;
-    
+
     if (isSelectingStart || !tempStartDateObj) {
       setTempStartDateObj(date);
       setTempEndDateObj(null);
@@ -147,11 +147,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   const getDateClassName = (date: Date) => {
     const isCurrentMonth = isSameMonth(date, currentViewDate);
     const isInRange = date >= dateRange[0] && date <= dateRange[1];
-    const isSelected = (tempStartDateObj && isSameDay(date, tempStartDateObj)) || 
+    const isSelected = (tempStartDateObj && isSameDay(date, tempStartDateObj)) ||
                      (tempEndDateObj && isSameDay(date, tempEndDateObj));
-    const isInSelectedRange = tempStartDateObj && tempEndDateObj && 
+    const isInSelectedRange = tempStartDateObj && tempEndDateObj &&
                              isWithinInterval(date, { start: tempStartDateObj, end: tempEndDateObj });
-    
+
     return clsx(
       'w-8 h-8 flex items-center justify-center text-sm rounded cursor-pointer transition-colors',
       {
@@ -169,7 +169,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     if (tempStartDateObj && tempEndDateObj) {
       const start = startOfDay(tempStartDateObj);
       const end = endOfDay(tempEndDateObj);
-      
+
       if (start <= end) {
         onApply([start, end]);
       }
@@ -191,7 +191,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     <div className="absolute top-full mt-2 right-0 w-96 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10">
       <div className="p-4">
         <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-4">Select Date Range</h3>
-        
+
         {/* Quick Range Buttons */}
         <div className="mb-4">
           <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Quick Select</div>
@@ -264,11 +264,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             </div>
           </div>
         </div>
-        
+
         {/* Calendar */}
         <div>
           <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {isSelectingStart ? 'Select start date' : 'Select end date'} 
+            {isSelectingStart ? 'Select start date' : 'Select end date'}
             {tempStartDateObj && (
               <span className="ml-2 text-blue-600 dark:text-blue-400">
                 Start: {format(tempStartDateObj, 'MMM d, yyyy')}
@@ -280,7 +280,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
               </span>
             )}
           </div>
-          
+
           {/* Calendar Grid */}
           <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
             {/* Week headers */}
@@ -291,7 +291,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 </div>
               ))}
             </div>
-            
+
             {/* Calendar days */}
             <div className="grid grid-cols-7 gap-1">
               {getCalendarDays().map(date => (

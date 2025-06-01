@@ -274,7 +274,7 @@ class SearchParser {
           regex,
           value: this.previous().value
         };
-      } catch (error) {
+      } catch {
         throw new Error(`Invalid regex pattern: ${this.previous().value}`);
       }
     }
