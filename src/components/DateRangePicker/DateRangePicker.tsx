@@ -52,29 +52,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   const navigateMonth = (direction: 'prev' | 'next') => {
     const newDate = direction === 'next' ? addMonths(currentViewDate, 1) : subMonths(currentViewDate, 1);
     setCurrentViewDate(newDate);
-    const monthStart = startOfMonth(newDate);
-    const monthEnd = endOfMonth(newDate);
-
-    // Ensure we don't go outside the available date range
-    const clampedStart = monthStart < dateRange[0] ? dateRange[0] : monthStart;
-    const clampedEnd = monthEnd > dateRange[1] ? dateRange[1] : monthEnd;
-
-    setTempStartDateObj(clampedStart);
-    setTempEndDateObj(clampedEnd);
   };
 
   const navigateYear = (direction: 'prev' | 'next') => {
     const newDate = direction === 'next' ? addYears(currentViewDate, 1) : subYears(currentViewDate, 1);
     setCurrentViewDate(newDate);
-    const yearStart = startOfYear(newDate);
-    const yearEnd = endOfYear(newDate);
-
-    // Ensure we don't go outside the available date range
-    const clampedStart = yearStart < dateRange[0] ? dateRange[0] : yearStart;
-    const clampedEnd = yearEnd > dateRange[1] ? dateRange[1] : yearEnd;
-
-    setTempStartDateObj(clampedStart);
-    setTempEndDateObj(clampedEnd);
   };
 
   const applyQuickRange = (type: 'thisYear' | 'lastYear' | 'last6months' | 'last30days' | 'last7days') => {

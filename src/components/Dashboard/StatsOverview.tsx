@@ -47,7 +47,7 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ analytics, metadat
     },
     {
       label: 'Active Days',
-      value: Object.keys(analytics.timePatterns.dailyActivity).length.toLocaleString(),
+      value: new Set(Object.values(analytics.timePatterns.dailyActivity).flatMap(senderDays => Object.keys(senderDays))).size.toLocaleString(),
       icon: Users,
       color: 'indigo',
       change: `${Math.round((Date.now() - metadata.dateRange.start.getTime()) / (1000 * 60 * 60 * 24))} day span`,
