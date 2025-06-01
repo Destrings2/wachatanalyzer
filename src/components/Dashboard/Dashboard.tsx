@@ -1,20 +1,21 @@
-import React, { useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useChatStore } from '../../stores/chatStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useFilterStore } from '../../stores/filterStore';
 import { StatsOverview } from './StatsOverview';
 import { FilterBar } from './FilterBar';
 import { ChartContainer } from './ChartContainer';
-import { filterMessages, analyzeChat } from '../../utils/analyzer';
+import { ProcessedAnalytics } from '../../types';
 import { Moon, Sun, Menu, X } from 'lucide-react';
 import clsx from 'clsx';
 
 export const Dashboard: React.FC = () => {
   const { analytics, metadata, participants, rawMessages, rawCalls } = useChatStore();
   const { theme, toggleTheme, sidebarCollapsed, toggleSidebar } = useUIStore();
-  const { selectedSenders, searchKeyword, messageTypes, dateRange } = useFilterStore();
+  const { selectedSenders, searchKeyword, messageTypes, dateRange, filterAndAnalyze, isFiltering } = useFilterStore();
   
-  const [selectedChart, setSelectedChart] = React.useState('timeline');
+  const [selectedChart, setSelectedChart] = useState('timeline');
+  const [filteredAnalytics, setFilteredAnalytics] = useState<ProcessedAnalytics | null>(null);
 
   const chartTypes = [
     { id: 'timeline', name: 'Activity Timeline', icon: '📈' },
@@ -25,9 +26,12 @@ export const Dashboard: React.FC = () => {
     { id: 'network', name: 'Chat Network', icon: '🕸️' },
   ];
 
-  // Compute filtered analytics
-  const filteredAnalytics = useMemo(() => {
-    if (!analytics || !metadata || !rawMessages) return analytics;
+  // Apply filters asynchronously when they change
+  useEffect(() => {
+    if (!analytics || !metadata || !rawMessages) {
+      setFilteredAnalytics(null);
+      return;
+    }
     
     const originalChat = {
       messages: rawMessages,
@@ -36,15 +40,11 @@ export const Dashboard: React.FC = () => {
       metadata
     };
     
-    const filteredChat = filterMessages(originalChat, {
-      selectedSenders,
-      searchKeyword,
-      messageTypes,
-      dateRange
-    });
-    
-    return analyzeChat(filteredChat);
-  }, [analytics, metadata, rawMessages, rawCalls, participants, selectedSenders, searchKeyword, messageTypes, dateRange]);
+    // Always apply filters using worker for consistency
+    filterAndAnalyze(originalChat)
+      .then(setFilteredAnalytics)
+      .catch(console.error);
+  }, [analytics, metadata, rawMessages, rawCalls, participants, selectedSenders, searchKeyword, messageTypes, dateRange, filterAndAnalyze]);
 
   if (!analytics || !metadata) {
     return <div>Loading...</div>;
@@ -105,7 +105,7 @@ export const Dashboard: React.FC = () => {
                 {metadata.chatType === 'individual' ? 'Chat Analysis' : 'Group Chat Analysis'}
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                {metadata.totalMessages.toLocaleString()} messages • {participants.length} participants
+                {(filteredAnalytics?.messageStats.totalMessages || metadata.totalMessages).toLocaleString()} messages • {participants.length} participants
               </p>
             </div>
             
@@ -126,20 +126,21 @@ export const Dashboard: React.FC = () => {
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
           <div className="p-6 space-y-6">
-            {/* Stats Overview */}
-            <StatsOverview analytics={filteredAnalytics || analytics} metadata={metadata} />
-
             {/* Filter Bar */}
             <FilterBar 
               participants={participants}
               dateRange={[metadata.dateRange.start, metadata.dateRange.end]}
             />
 
+            {/* Stats Overview */}
+            <StatsOverview analytics={filteredAnalytics || analytics} metadata={metadata} />
+
             {/* Chart */}
             <ChartContainer 
               chartType={selectedChart}
               analytics={filteredAnalytics || analytics}
-              messages={rawMessages} // Pass filtered messages if needed
+              messages={rawMessages}
+              isLoading={isFiltering}
             />
           </div>
         </div>

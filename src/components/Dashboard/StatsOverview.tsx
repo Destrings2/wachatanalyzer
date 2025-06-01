@@ -12,7 +12,7 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ analytics, metadat
   const stats = [
     {
       label: 'Total Messages',
-      value: metadata.totalMessages.toLocaleString(),
+      value: `${analytics.messageStats.totalMessages.toLocaleString()}`,
       icon: MessageSquare,
       color: 'blue',
       change: `${analytics.messageStats.totalWords.toLocaleString()} words`,
