@@ -60,10 +60,12 @@ export interface MessageStats {
 }
 
 export interface TimePatterns {
-  hourlyActivity: Record<number, number>;
-  dailyActivity: Record<string, number>;
-  weeklyActivity: Record<number, number>;
-  monthlyActivity: Record<string, number>;
+  // All time patterns are now sender-separated by default
+  // When not separating by sender, we aggregate these values
+  hourlyActivity: Record<string, Record<number, number>>;
+  dailyActivity: Record<string, Record<string, number>>;
+  weeklyActivity: Record<string, Record<number, number>>;
+  monthlyActivity: Record<string, Record<string, number>>;
 }
 
 export interface EmojiAnalysis {

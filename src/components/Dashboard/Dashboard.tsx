@@ -169,7 +169,6 @@ export const Dashboard: React.FC = () => {
             <ChartContainer 
               chartType={selectedChart}
               analytics={filteredAnalytics || analytics}
-              messages={rawMessages}
               isLoading={isFiltering}
             />
           </div>

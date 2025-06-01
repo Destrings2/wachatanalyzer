@@ -2,32 +2,74 @@ import React, { useMemo } from 'react';
 import * as d3 from 'd3';
 import { ProcessedAnalytics } from '../../types';
 import { useD3 } from '../../hooks/useD3';
-import { useUIStore } from '../../stores/uiStore';
+import { useUIStore, ChartSettings } from '../../stores/uiStore';
+import { aggregateHourlyActivity } from '../../utils/analyzer';
+import { getSenderColor, getChartColors } from '../../utils/chartUtils';
 
 interface RadialActivityClockProps {
   analytics: ProcessedAnalytics;
+  settings: ChartSettings;
 }
 
-export const RadialActivityClock: React.FC<RadialActivityClockProps> = ({ analytics }) => {
+export const RadialActivityClock: React.FC<RadialActivityClockProps> = ({ analytics, settings }) => {
   const { theme } = useUIStore();
 
   // Transform hourly activity data for D3
   const data = useMemo(() => {
-    const hourlyData = Array.from({ length: 24 }, (_, hour) => ({
-      hour,
-      count: analytics.timePatterns.hourlyActivity[hour] || 0,
-      label: hour === 0 ? '12 AM' :
-             hour < 12 ? `${hour} AM` :
-             hour === 12 ? '12 PM' :
-             `${hour - 12} PM`
-    }));
+    const hourlyBySender = analytics.timePatterns.hourlyActivity;
+    const allSenders = Object.keys(hourlyBySender).sort();
+    
+    if (settings.separateMessagesBySender) {
+      // Create data with separate series for each sender
+      const hourlyData = Array.from({ length: 24 }, (_, hour) => {
+        const result: { hour: number; count: number; label: string; [key: string]: number | string } = {
+          hour,
+          count: 0,
+          label: hour === 0 ? '12 AM' :
+                 hour < 12 ? `${hour} AM` :
+                 hour === 12 ? '12 PM' :
+                 `${hour - 12} PM`
+        };
+        
+        // Add count for each sender and calculate total
+        allSenders.forEach(sender => {
+          const senderCount = hourlyBySender[sender]?.[hour] || 0;
+          result[sender] = senderCount;
+          result.count += senderCount;
+        });
+        
+        return result;
+      });
 
-    const maxCount = Math.max(...hourlyData.map(d => d.count));
-    return hourlyData.map(d => ({
-      ...d,
-      normalizedCount: maxCount > 0 ? d.count / maxCount : 0
-    }));
-  }, [analytics.timePatterns.hourlyActivity]);
+      const maxCount = Math.max(...hourlyData.map(d => d.count));
+      return hourlyData.map(d => ({
+        ...d,
+        normalizedCount: maxCount > 0 ? d.count / maxCount : 0,
+        // Normalize each sender's count
+        ...Object.fromEntries(allSenders.map(sender => [
+          `${sender}_normalized`, 
+          maxCount > 0 ? ((d[sender] as number) || 0) / maxCount : 0
+        ]))
+      }));
+    } else {
+      // Aggregate all senders
+      const aggregated = aggregateHourlyActivity(hourlyBySender);
+      const hourlyData = Array.from({ length: 24 }, (_, hour) => ({
+        hour,
+        count: aggregated[hour] || 0,
+        label: hour === 0 ? '12 AM' :
+               hour < 12 ? `${hour} AM` :
+               hour === 12 ? '12 PM' :
+               `${hour - 12} PM`
+      }));
+
+      const maxCount = Math.max(...hourlyData.map(d => d.count));
+      return hourlyData.map(d => ({
+        ...d,
+        normalizedCount: maxCount > 0 ? d.count / maxCount : 0
+      }));
+    }
+  }, [analytics.timePatterns.hourlyActivity, settings.separateMessagesBySender]);
 
   const ref = useD3(
     (svg) => {
@@ -39,14 +81,12 @@ export const RadialActivityClock: React.FC<RadialActivityClockProps> = ({ analyt
       const outerRadius = clockRadius * 0.85;
 
       // Color scheme based on theme
-      const colors = {
-        low: theme === 'dark' ? '#1e3a8a' : '#dbeafe',
-        high: theme === 'dark' ? '#60a5fa' : '#1d4ed8',
-        text: theme === 'dark' ? '#f3f4f6' : '#111827',
-        axis: theme === 'dark' ? '#9ca3af' : '#6b7280',
-        background: theme === 'dark' ? '#1f2937' : '#ffffff',
-        grid: theme === 'dark' ? '#374151' : '#e5e7eb',
-      };
+      const colors = getChartColors(theme);
+
+      // Get unique senders from analytics data
+      const allSenders = settings.separateMessagesBySender 
+        ? Object.keys(analytics.timePatterns.hourlyActivity).sort()
+        : [];
 
       // Clear previous content
       svg.selectAll('*').remove();
@@ -116,48 +156,116 @@ export const RadialActivityClock: React.FC<RadialActivityClockProps> = ({ analyt
         .style('box-shadow', '0 2px 4px rgba(0,0,0,0.1)')
         .style('z-index', '1000');
 
-      // Draw segments
-      g.selectAll('.hour-segment')
-        .data(data)
-        .enter()
-        .append('path')
-        .attr('class', 'hour-segment')
-        .attr('d', arc)
-        .attr('fill', d => colorScale(d.normalizedCount))
-        .attr('stroke', colors.background)
-        .attr('stroke-width', 1)
-        .style('cursor', 'pointer')
-        .on('mouseover', function(event, d) {
-          d3.select(this)
-            .transition()
-            .duration(150)
-            .attr('opacity', 0.8)
-            .attr('stroke-width', 2);
+      if (settings.separateMessagesBySender && allSenders.length > 0) {
+        // Draw stacked segments for each sender
+        data.forEach((hourData) => {
+          if (hourData.count === 0) return;
+          
+          let currentRadius = innerRadius;
+          const totalRadius = radiusScale(hourData.normalizedCount);
+          const radiusStep = (totalRadius - innerRadius) / hourData.count;
+          
+          allSenders.forEach((sender, senderIndex) => {
+            const senderCount = (hourData[sender] as number) || 0;
+            if (senderCount === 0) return;
+            
+            const senderColor = getSenderColor(senderIndex, theme);
+            const segmentRadius = radiusStep * senderCount;
+            
+            const senderArc = d3.arc<SVGPathElement, HourData>()
+              .innerRadius(currentRadius)
+              .outerRadius(currentRadius + segmentRadius)
+              .startAngle(angleScale(hourData.hour) - angleScale(0.5))
+              .endAngle(angleScale(hourData.hour) + angleScale(0.5));
+            
+            g.append('path')
+              .datum(hourData)
+              .attr('class', `hour-segment sender-${senderIndex}`)
+              .attr('d', senderArc)
+              .attr('fill', senderColor)
+              .attr('stroke', colors.background)
+              .attr('stroke-width', 0.5)
+              .style('cursor', 'pointer')
+              .on('mouseover', function(event, d) {
+                d3.select(this)
+                  .transition()
+                  .duration(150)
+                  .attr('opacity', 0.8)
+                  .attr('stroke-width', 1);
 
-          tooltip.transition()
-            .duration(150)
-            .style('opacity', 1);
-          tooltip.html(`
-            <div style="font-weight: bold;">${d.label}</div>
-            <div>${d.count} messages</div>
-            <div style="font-size: 10px; opacity: 0.7; margin-top: 2px;">
-              ${Math.round(d.normalizedCount * 100)}% of peak activity
-            </div>
-          `)
-            .style('left', (event.pageX + 10) + 'px')
-            .style('top', (event.pageY - 10) + 'px');
-        })
-        .on('mouseout', function() {
-          d3.select(this)
-            .transition()
-            .duration(150)
-            .attr('opacity', 1)
-            .attr('stroke-width', 1);
+                tooltip.transition()
+                  .duration(150)
+                  .style('opacity', 1);
+                tooltip.html(`
+                  <div style="font-weight: bold;">${d.label}</div>
+                  <div style="color: ${senderColor}">${sender}: ${senderCount} messages</div>
+                  <div>Total: ${d.count} messages</div>
+                  <div style="font-size: 10px; opacity: 0.7; margin-top: 2px;">
+                    ${Math.round((senderCount / d.count) * 100)}% of hour activity
+                  </div>
+                `)
+                  .style('left', (event.pageX + 10) + 'px')
+                  .style('top', (event.pageY - 10) + 'px');
+              })
+              .on('mouseout', function() {
+                d3.select(this)
+                  .transition()
+                  .duration(150)
+                  .attr('opacity', 1)
+                  .attr('stroke-width', 0.5);
 
-          tooltip.transition()
-            .duration(300)
-            .style('opacity', 0);
+                tooltip.transition()
+                  .duration(300)
+                  .style('opacity', 0);
+              });
+            
+            currentRadius += segmentRadius;
+          });
         });
+      } else {
+        // Draw single segments (default behavior)
+        g.selectAll('.hour-segment')
+          .data(data)
+          .enter()
+          .append('path')
+          .attr('class', 'hour-segment')
+          .attr('d', arc)
+          .attr('fill', d => colorScale(d.normalizedCount))
+          .attr('stroke', colors.background)
+          .attr('stroke-width', 1)
+          .style('cursor', 'pointer')
+          .on('mouseover', function(event, d) {
+            d3.select(this)
+              .transition()
+              .duration(150)
+              .attr('opacity', 0.8)
+              .attr('stroke-width', 2);
+
+            tooltip.transition()
+              .duration(150)
+              .style('opacity', 1);
+            tooltip.html(`
+              <div style="font-weight: bold;">${d.label}</div>
+              <div>${d.count} messages</div>
+              <div style="font-size: 10px; opacity: 0.7; margin-top: 2px;">
+                ${Math.round(d.normalizedCount * 100)}% of peak activity
+              </div>
+            `)
+              .style('left', (event.pageX + 10) + 'px')
+              .style('top', (event.pageY - 10) + 'px');
+          })
+          .on('mouseout', function() {
+            d3.select(this)
+              .transition()
+              .duration(150)
+              .attr('opacity', 1)
+              .attr('stroke-width', 1);
+
+            tooltip.transition()
+              .duration(300)
+              .style('opacity', 0);
+          });
+      }
 
       // Add hour labels at key positions only
       const keyHours = [0, 6, 12, 18];
@@ -204,7 +312,7 @@ export const RadialActivityClock: React.FC<RadialActivityClockProps> = ({ analyt
         d3.selectAll('.radial-tooltip').remove();
       };
     },
-    [data, theme]
+    [data, theme, settings.separateMessagesBySender, analytics.timePatterns.hourlyActivity]
   );
 
   const peakHour = data.reduce((peak, current) =>

@@ -12,6 +12,57 @@ import { format } from 'date-fns';
 import * as sw from 'stopword';
 import { franc } from 'franc-min';
 
+// Utility functions to aggregate sender-separated data
+export function aggregateHourlyActivity(hourlyBySender: Record<string, Record<number, number>>): Record<number, number> {
+  const aggregated: Record<number, number> = {};
+  for (let i = 0; i < 24; i++) aggregated[i] = 0;
+  
+  Object.values(hourlyBySender).forEach(senderData => {
+    Object.entries(senderData).forEach(([hour, count]) => {
+      aggregated[parseInt(hour)] += count;
+    });
+  });
+  
+  return aggregated;
+}
+
+export function aggregateDailyActivity(dailyBySender: Record<string, Record<string, number>>): Record<string, number> {
+  const aggregated: Record<string, number> = {};
+  
+  Object.values(dailyBySender).forEach(senderData => {
+    Object.entries(senderData).forEach(([date, count]) => {
+      aggregated[date] = (aggregated[date] || 0) + count;
+    });
+  });
+  
+  return aggregated;
+}
+
+export function aggregateWeeklyActivity(weeklyBySender: Record<string, Record<number, number>>): Record<number, number> {
+  const aggregated: Record<number, number> = {};
+  for (let i = 0; i < 7; i++) aggregated[i] = 0;
+  
+  Object.values(weeklyBySender).forEach(senderData => {
+    Object.entries(senderData).forEach(([day, count]) => {
+      aggregated[parseInt(day)] += count;
+    });
+  });
+  
+  return aggregated;
+}
+
+export function aggregateMonthlyActivity(monthlyBySender: Record<string, Record<string, number>>): Record<string, number> {
+  const aggregated: Record<string, number> = {};
+  
+  Object.values(monthlyBySender).forEach(senderData => {
+    Object.entries(senderData).forEach(([month, count]) => {
+      aggregated[month] = (aggregated[month] || 0) + count;
+    });
+  });
+  
+  return aggregated;
+}
+
 // Type for supported languages in stopword package
 type StopwordLanguage = 'eng' | 'spa' | 'por' | 'fra' | 'deu' | 'ita' | 'nld' | 'swe' | 'dan' | 'rus' | 'pol' | 'fin' | 'hun' | 'tur' | 'ara' | 'fas' | 'hin' | 'jpn' | 'zho' | 'kor' | 'tha' | 'vie' | 'ind';
 
@@ -106,25 +157,38 @@ export function analyzeMessageStats(chat: ParsedChat): MessageStats {
 }
 
 export function analyzeTimePatterns(chat: ParsedChat): TimePatterns {
-  const hourlyActivity: Record<number, number> = {};
-  const dailyActivity: Record<string, number> = {};
-  const weeklyActivity: Record<number, number> = {};
-  const monthlyActivity: Record<string, number> = {};
+  const hourlyActivity: Record<string, Record<number, number>> = {};
+  const dailyActivity: Record<string, Record<string, number>> = {};
+  const weeklyActivity: Record<string, Record<number, number>> = {};
+  const monthlyActivity: Record<string, Record<string, number>> = {};
   
-  // Initialize patterns
-  for (let i = 0; i < 24; i++) hourlyActivity[i] = 0;
-  for (let i = 0; i < 7; i++) weeklyActivity[i] = 0;
+  // Get all unique senders
+  const senders = new Set(chat.messages.map(m => m.sender));
   
+  // Initialize patterns for each sender
+  senders.forEach(sender => {
+    hourlyActivity[sender] = {};
+    weeklyActivity[sender] = {};
+    dailyActivity[sender] = {};
+    monthlyActivity[sender] = {};
+    
+    // Initialize hourly and weekly patterns
+    for (let i = 0; i < 24; i++) hourlyActivity[sender][i] = 0;
+    for (let i = 0; i < 7; i++) weeklyActivity[sender][i] = 0;
+  });
+  
+  // Populate patterns
   for (const msg of chat.messages) {
+    const sender = msg.sender;
     const hour = msg.datetime.getHours();
     const dayOfWeek = msg.datetime.getDay();
     const date = format(msg.datetime, 'yyyy-MM-dd');
     const month = format(msg.datetime, 'yyyy-MM');
     
-    hourlyActivity[hour]++;
-    weeklyActivity[dayOfWeek]++;
-    dailyActivity[date] = (dailyActivity[date] || 0) + 1;
-    monthlyActivity[month] = (monthlyActivity[month] || 0) + 1;
+    hourlyActivity[sender][hour]++;
+    weeklyActivity[sender][dayOfWeek]++;
+    dailyActivity[sender][date] = (dailyActivity[sender][date] || 0) + 1;
+    monthlyActivity[sender][month] = (monthlyActivity[sender][month] || 0) + 1;
   }
   
   return {

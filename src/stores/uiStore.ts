@@ -2,12 +2,19 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { View, Theme } from '../types';
 
+export interface ChartSettings {
+  separateMessagesBySender: boolean;
+  showMessageCount: boolean;
+  enableAnimations: boolean;
+}
+
 interface UIStore {
   // UI State
   theme: Theme;
   activeView: View;
   selectedChart: string | null;
   sidebarCollapsed: boolean;
+  chartSettings: ChartSettings;
   
   // Actions
   toggleTheme: () => void;
@@ -15,6 +22,7 @@ interface UIStore {
   setActiveView: (view: View) => void;
   setSelectedChart: (chart: string | null) => void;
   toggleSidebar: () => void;
+  updateChartSettings: (settings: Partial<ChartSettings>) => void;
 }
 
 export const useUIStore = create<UIStore>()(
@@ -25,6 +33,11 @@ export const useUIStore = create<UIStore>()(
       activeView: 'upload',
       selectedChart: null,
       sidebarCollapsed: false,
+      chartSettings: {
+        separateMessagesBySender: false,
+        showMessageCount: true,
+        enableAnimations: true,
+      },
       
       // Actions
       toggleTheme: () => set((state) => ({ 
@@ -40,10 +53,17 @@ export const useUIStore = create<UIStore>()(
       toggleSidebar: () => set((state) => ({ 
         sidebarCollapsed: !state.sidebarCollapsed 
       })),
+      
+      updateChartSettings: (settings) => set((state) => ({
+        chartSettings: { ...state.chartSettings, ...settings }
+      })),
     }),
     {
       name: 'chatanalyzer-ui',
-      partialize: (state) => ({ theme: state.theme }), // Only persist theme
+      partialize: (state) => ({ 
+        theme: state.theme,
+        chartSettings: state.chartSettings 
+      }),
     }
   )
 );

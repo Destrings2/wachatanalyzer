@@ -230,9 +230,16 @@ describe('Complete Workflow Integration Tests', () => {
       const analytics = analyzeChat(chat)
 
       // Verify time patterns suitable for timeline charts
-      expect(analytics.timePatterns.hourlyActivity[9]).toBe(1) // 9 AM message
-      expect(analytics.timePatterns.hourlyActivity[14]).toBe(1) // 2 PM message
-      expect(analytics.timePatterns.hourlyActivity[20]).toBe(1) // 8 PM message
+      const aggregatedHourly = Object.values(analytics.timePatterns.hourlyActivity).reduce((acc, senderData) => {
+        Object.entries(senderData).forEach(([hour, count]) => {
+          acc[parseInt(hour)] = (acc[parseInt(hour)] || 0) + count
+        })
+        return acc
+      }, {} as Record<number, number>)
+      
+      expect(aggregatedHourly[9]).toBe(1) // 9 AM message
+      expect(aggregatedHourly[14]).toBe(1) // 2 PM message
+      expect(aggregatedHourly[20]).toBe(1) // 8 PM message
 
       // Verify emoji data suitable for emoji charts
       expect(analytics.emojiAnalysis.emojiFrequency['😊']).toBe(1)

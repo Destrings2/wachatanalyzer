@@ -3,41 +3,71 @@ import * as d3 from 'd3';
 import { ProcessedAnalytics } from '../../types';
 import { useD3 } from '../../hooks/useD3';
 import { format } from 'date-fns';
-import { useUIStore } from '../../stores/uiStore';
+import { useUIStore, ChartSettings } from '../../stores/uiStore';
+import { aggregateDailyActivity } from '../../utils/analyzer';
+import { getSenderColor, getChartColors } from '../../utils/chartUtils';
 
 interface ActivityTimelineProps {
   analytics: ProcessedAnalytics;
+  settings: ChartSettings;
 }
 
-export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics }) => {
+export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, settings }) => {
   const { theme } = useUIStore();
 
   // Transform daily activity data for D3
   const data = useMemo(() => {
-    return Object.entries(analytics.timePatterns.dailyActivity).map(([date, count]) => ({
-      date: new Date(date),
-      count,
-    })).sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [analytics.timePatterns.dailyActivity]);
+    const dailyBySender = analytics.timePatterns.dailyActivity;
+    const allSenders = Object.keys(dailyBySender).sort();
+    
+    if (settings.separateMessagesBySender) {
+      // Create data with separate series for each sender
+      const allDates = new Set<string>();
+      Object.values(dailyBySender).forEach(senderData => {
+        Object.keys(senderData).forEach(date => allDates.add(date));
+      });
+      
+      const dates = Array.from(allDates).sort();
+      return dates.map(date => {
+        const result: { date: Date; count: number; [key: string]: Date | number } = {
+          date: new Date(date),
+          count: 0
+        };
+        
+        // Add count for each sender and calculate total
+        allSenders.forEach(sender => {
+          const senderCount = dailyBySender[sender]?.[date] || 0;
+          result[sender] = senderCount;
+          result.count += senderCount;
+        });
+        
+        return result;
+      });
+    } else {
+      // Aggregate all senders
+      const aggregated = aggregateDailyActivity(dailyBySender);
+      return Object.entries(aggregated).map(([date, count]) => ({
+        date: new Date(date),
+        count,
+      })).sort((a, b) => a.date.getTime() - b.date.getTime());
+    }
+  }, [analytics.timePatterns.dailyActivity, settings.separateMessagesBySender]);
 
   const ref = useD3(
     (svg) => {
-      const margin = { top: 20, right: 30, bottom: 80, left: 60 };
+      const margin = { top: 20, right: 150, bottom: 80, left: 60 };
       const width = 1000 - margin.left - margin.right;
       const height = 400 - margin.top - margin.bottom;
       const contextHeight = 50;
       const contextMargin = { top: height + margin.top + 40, bottom: 0 };
 
       // Color scheme based on theme
-      const colors = {
-        line: theme === 'dark' ? '#60a5fa' : '#3b82f6',
-        area: theme === 'dark' ? '#60a5fa' : '#3b82f6',
-        axis: theme === 'dark' ? '#9ca3af' : '#6b7280',
-        grid: theme === 'dark' ? '#374151' : '#e5e7eb',
-        text: theme === 'dark' ? '#f3f4f6' : '#111827',
-        brush: theme === 'dark' ? 'rgba(96, 165, 250, 0.2)' : 'rgba(59, 130, 246, 0.2)',
-        brushHandle: theme === 'dark' ? '#60a5fa' : '#3b82f6',
-      };
+      const colors = getChartColors(theme);
+
+      // Get unique senders from analytics data
+      const allSenders = settings.separateMessagesBySender 
+        ? Object.keys(analytics.timePatterns.dailyActivity).sort()
+        : [];
 
       // Clear previous content
       svg.selectAll('*').remove();
@@ -64,8 +94,13 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics })
         .domain(d3.extent(data, d => d.date) as [Date, Date])
         .range([0, width]);
 
+      // Calculate max value considering sender separation
+      const maxValue = settings.separateMessagesBySender && allSenders.length > 0
+        ? d3.max(data, d => Math.max(...allSenders.map(sender => (d[sender] as number) || 0))) as number
+        : d3.max(data, d => d.count) as number;
+
       const y = d3.scaleLinear()
-        .domain([0, d3.max(data, d => d.count) as number])
+        .domain([0, maxValue])
         .nice()
         .range([height, 0]);
 
@@ -114,22 +149,108 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics })
       const focus = g.append('g')
         .attr('class', 'focus');
 
-      // Add the area with clipping
-      const areaPath = focus.append('path')
-        .datum(data)
-        .attr('fill', colors.area)
-        .attr('fill-opacity', 0.1)
-        .attr('d', area)
-        .attr('clip-path', 'url(#clip)');
+      // Store references for update function
+      let areaPath: d3.Selection<SVGPathElement, unknown, null, undefined> | null = null;
+      let linePath: d3.Selection<SVGPathElement, unknown, null, undefined> | null = null;
+      let dots: d3.Selection<SVGCircleElement, typeof data[0], SVGGElement, unknown> | null = null;
+      const senderPaths: d3.Selection<SVGPathElement, unknown, null, undefined>[] = [];
+      const senderDots: d3.Selection<SVGCircleElement, typeof data[0], SVGGElement, unknown>[] = [];
 
-      // Add the line with clipping
-      const linePath = focus.append('path')
-        .datum(data)
-        .attr('fill', 'none')
-        .attr('stroke', colors.line)
-        .attr('stroke-width', 2)
-        .attr('d', line)
-        .attr('clip-path', 'url(#clip)');
+      if (settings.separateMessagesBySender && allSenders.length > 0) {
+        // Multiple lines for each sender
+        allSenders.forEach((sender, index) => {
+          const senderColor = getSenderColor(index, theme);
+          
+          // Line generator for this sender
+          const senderLine = d3.line<typeof data[0]>()
+            .x(d => x(d.date))
+            .y(d => y((d[sender] as number) || 0))
+            .curve(d3.curveMonotoneX);
+
+          // Add line for this sender
+          const senderPath = focus.append('path')
+            .datum(data)
+            .attr('fill', 'none')
+            .attr('stroke', senderColor)
+            .attr('stroke-width', 2)
+            .attr('d', senderLine)
+            .attr('clip-path', 'url(#clip)')
+            .attr('class', `sender-line-${index}`);
+          
+          senderPaths[index] = senderPath;
+
+          // Add dots for this sender
+          const senderDotsSelection = focus.selectAll(`.dot-${index}`)
+            .data(data)
+            .enter().append('circle')
+            .attr('class', `dot dot-${index}`)
+            .attr('cx', d => x(d.date))
+            .attr('cy', d => y((d[sender] as number) || 0))
+            .attr('r', 3)
+            .attr('fill', senderColor)
+            .attr('clip-path', 'url(#clip)')
+            .style('cursor', 'pointer')
+            .on('mouseover', function(event, d) {
+              d3.select(this).transition().duration(100).attr('r', 5);
+              tooltip.transition().duration(200).style('opacity', 1);
+              tooltip.html(`
+                <div style="font-weight: bold">${format(d.date, 'MMM d, yyyy')}</div>
+                <div style="margin-top: 4px; color: ${senderColor}">${sender}: ${d[sender]} messages</div>
+                <div style="margin-top: 2px">Total: ${d.count} messages</div>
+              `)
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 28) + 'px');
+            })
+            .on('mouseout', function() {
+              d3.select(this).transition().duration(100).attr('r', 3);
+              tooltip.transition().duration(500).style('opacity', 0);
+            });
+          
+          senderDots[index] = senderDotsSelection;
+        });
+      } else {
+        // Single line/area (default behavior)
+        areaPath = focus.append('path')
+          .datum(data)
+          .attr('fill', colors.area)
+          .attr('fill-opacity', 0.1)
+          .attr('d', area)
+          .attr('clip-path', 'url(#clip)');
+
+        linePath = focus.append('path')
+          .datum(data)
+          .attr('fill', 'none')
+          .attr('stroke', colors.line)
+          .attr('stroke-width', 2)
+          .attr('d', line)
+          .attr('clip-path', 'url(#clip)');
+
+        // Interactive dots with clipping
+        dots = focus.selectAll('.dot')
+          .data(data)
+          .enter().append('circle')
+          .attr('class', 'dot')
+          .attr('cx', d => x(d.date))
+          .attr('cy', d => y(d.count))
+          .attr('r', 4)
+          .attr('fill', colors.line)
+          .attr('clip-path', 'url(#clip)')
+          .style('cursor', 'pointer')
+          .on('mouseover', function(event, d) {
+            d3.select(this).transition().duration(100).attr('r', 6);
+            tooltip.transition().duration(200).style('opacity', 1);
+            tooltip.html(`
+              <div style="font-weight: bold">${format(d.date, 'MMM d, yyyy')}</div>
+              <div style="margin-top: 4px">${d.count} messages</div>
+            `)
+              .style('left', (event.pageX + 10) + 'px')
+              .style('top', (event.pageY - 28) + 'px');
+          })
+          .on('mouseout', function() {
+            d3.select(this).transition().duration(100).attr('r', 4);
+            tooltip.transition().duration(500).style('opacity', 0);
+          });
+      }
 
       // X Axis
       const xAxis = g.append('g')
@@ -177,7 +298,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics })
         .style('font-size', '14px')
         .text('Date');
 
-      // Interactive dots
+      // Tooltip
       const tooltip = d3.select('body').append('div')
         .attr('class', 'tooltip')
         .style('opacity', 0)
@@ -192,31 +313,34 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics })
         .style('box-shadow', '0 2px 4px rgba(0,0,0,0.1)')
         .style('z-index', '1000');
 
-      // Interactive dots with clipping
-      const dots = focus.selectAll('.dot')
-        .data(data)
-        .enter().append('circle')
-        .attr('class', 'dot')
-        .attr('cx', d => x(d.date))
-        .attr('cy', d => y(d.count))
-        .attr('r', 4)
-        .attr('fill', colors.line)
-        .attr('clip-path', 'url(#clip)')
-        .style('cursor', 'pointer')
-        .on('mouseover', function(event, d) {
-          d3.select(this).transition().duration(100).attr('r', 6);
-          tooltip.transition().duration(200).style('opacity', 1);
-          tooltip.html(`
-            <div style="font-weight: bold">${format(d.date, 'MMM d, yyyy')}</div>
-            <div style="margin-top: 4px">${d.count} messages</div>
-          `)
-            .style('left', (event.pageX + 10) + 'px')
-            .style('top', (event.pageY - 28) + 'px');
-        })
-        .on('mouseout', function() {
-          d3.select(this).transition().duration(100).attr('r', 4);
-          tooltip.transition().duration(500).style('opacity', 0);
+      // Add legend for sender separation
+      if (settings.separateMessagesBySender && allSenders.length > 0) {
+        const legend = g.append('g')
+          .attr('class', 'legend')
+          .attr('transform', `translate(${width + 20}, 20)`);
+
+        allSenders.forEach((sender, index) => {
+          const senderColor = getSenderColor(index, theme);
+          const legendItem = legend.append('g')
+            .attr('transform', `translate(0, ${index * 20})`);
+
+          legendItem.append('line')
+            .attr('x1', 0)
+            .attr('x2', 15)
+            .attr('y1', 0)
+            .attr('y2', 0)
+            .attr('stroke', senderColor)
+            .attr('stroke-width', 2);
+
+          legendItem.append('text')
+            .attr('x', 20)
+            .attr('y', 0)
+            .attr('dy', '0.35em')
+            .style('font-size', '12px')
+            .style('fill', colors.text)
+            .text(sender.length > 15 ? sender.substring(0, 15) + '...' : sender);
         });
+      }
 
       // Context (minimap)
       const context = svg.append('g')
@@ -284,14 +408,38 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics })
       }
 
       function updateChart() {
-        // Update area and line
-        areaPath.attr('d', area);
-        linePath.attr('d', line);
+        if (settings.separateMessagesBySender && allSenders.length > 0) {
+          // Update sender lines and dots
+          allSenders.forEach((sender, index) => {
+            const senderLine = d3.line<typeof data[0]>()
+              .x(d => x(d.date))
+              .y(d => y((d[sender] as number) || 0))
+              .curve(d3.curveMonotoneX);
 
-        // Update dots
-        dots
-          .attr('cx', d => x(d.date))
-          .attr('cy', d => y(d.count));
+            if (senderPaths[index]) {
+              senderPaths[index].datum(data).attr('d', senderLine);
+            }
+
+            if (senderDots[index]) {
+              senderDots[index]
+                .attr('cx', d => x(d.date))
+                .attr('cy', d => y((d[sender] as number) || 0));
+            }
+          });
+        } else {
+          // Update single line/area
+          if (areaPath) {
+            areaPath.datum(data).attr('d', area);
+          }
+          if (linePath) {
+            linePath.datum(data).attr('d', line);
+          }
+          if (dots) {
+            dots
+              .attr('cx', d => x(d.date))
+              .attr('cy', d => y(d.count));
+          }
+        }
 
         // Update axes
         xAxis.call(d3.axisBottom(x)
@@ -312,10 +460,10 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics })
         d3.selectAll('.tooltip').remove();
       };
     },
-    [data, theme]
+    [data, theme, settings.separateMessagesBySender, analytics.timePatterns.dailyActivity]
   );
 
-  const totalMessages = Object.values(analytics.timePatterns.dailyActivity).reduce((sum, count) => sum + count, 0);
+  const totalMessages = data.reduce((sum, d) => sum + d.count, 0);
   const avgPerDay = Math.round(totalMessages / data.length);
 
   return (

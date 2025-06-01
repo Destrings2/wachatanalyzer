@@ -6,7 +6,11 @@ import {
   analyzeWordFrequency,
   analyzeResponseMetrics,
   analyzeCallAnalytics,
-  analyzeChat
+  analyzeChat,
+  aggregateHourlyActivity,
+  aggregateDailyActivity,
+  aggregateWeeklyActivity,
+  aggregateMonthlyActivity
 } from './analyzer'
 import { createMockChat, createMockMessage, createMockCall } from '../test/utils'
 
@@ -85,11 +89,12 @@ describe('Time Patterns Analysis', () => {
     })
 
     const patterns = analyzeTimePatterns(chat)
+    const aggregated = aggregateHourlyActivity(patterns.hourlyActivity)
 
-    expect(patterns.hourlyActivity[9]).toBe(2)
-    expect(patterns.hourlyActivity[14]).toBe(1)
-    expect(patterns.hourlyActivity[20]).toBe(1)
-    expect(patterns.hourlyActivity[0]).toBe(0) // No messages at midnight
+    expect(aggregated[9]).toBe(2)
+    expect(aggregated[14]).toBe(1)
+    expect(aggregated[20]).toBe(1)
+    expect(aggregated[0]).toBe(0) // No messages at midnight
   })
 
   it('should analyze weekly activity patterns', () => {
@@ -103,11 +108,12 @@ describe('Time Patterns Analysis', () => {
     })
 
     const patterns = analyzeTimePatterns(chat)
+    const aggregated = aggregateWeeklyActivity(patterns.weeklyActivity)
 
-    expect(patterns.weeklyActivity[0]).toBe(1) // Sunday
-    expect(patterns.weeklyActivity[1]).toBe(2) // Monday
-    expect(patterns.weeklyActivity[2]).toBe(1) // Tuesday
-    expect(patterns.weeklyActivity[3]).toBe(0) // Wednesday
+    expect(aggregated[0]).toBe(1) // Sunday
+    expect(aggregated[1]).toBe(2) // Monday
+    expect(aggregated[2]).toBe(1) // Tuesday
+    expect(aggregated[3]).toBe(0) // Wednesday
   })
 
   it('should analyze daily and monthly activity', () => {
@@ -121,11 +127,13 @@ describe('Time Patterns Analysis', () => {
     })
 
     const patterns = analyzeTimePatterns(chat)
+    const aggregatedDaily = aggregateDailyActivity(patterns.dailyActivity)
+    const aggregatedMonthly = aggregateMonthlyActivity(patterns.monthlyActivity)
 
-    expect(patterns.dailyActivity['2024-01-15']).toBe(2)
-    expect(patterns.dailyActivity['2024-01-16']).toBe(1)
-    expect(patterns.monthlyActivity['2024-01']).toBe(3)
-    expect(patterns.monthlyActivity['2024-02']).toBe(1)
+    expect(aggregatedDaily['2024-01-15']).toBe(2)
+    expect(aggregatedDaily['2024-01-16']).toBe(1)
+    expect(aggregatedMonthly['2024-01']).toBe(3)
+    expect(aggregatedMonthly['2024-02']).toBe(1)
   })
 })
 
