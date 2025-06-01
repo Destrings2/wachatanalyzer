@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useFilterStore } from '../../stores/filterStore';
 import { Participant } from '../../types';
-import { Calendar, Search, Users, X, Filter } from 'lucide-react';
-import { format, startOfDay, endOfDay } from 'date-fns';
+import { Calendar, Search, Users, X, Filter, HelpCircle, CheckCircle, AlertCircle } from 'lucide-react';
+import { format } from 'date-fns';
 import clsx from 'clsx';
+import { DateRangePicker } from '../DateRangePicker/DateRangePicker';
+import { validateSearchQuery, getSearchSuggestions } from '../../utils/searchParser';
 
 interface FilterBarProps {
   participants: Participant[];
@@ -27,12 +29,12 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
   const [showSenderDropdown, setShowSenderDropdown] = useState(false);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [tempStartDate, setTempStartDate] = useState(
-    filterDateRange ? format(filterDateRange[0], 'yyyy-MM-dd') : format(dateRange[0], 'yyyy-MM-dd')
-  );
-  const [tempEndDate, setTempEndDate] = useState(
-    filterDateRange ? format(filterDateRange[1], 'yyyy-MM-dd') : format(dateRange[1], 'yyyy-MM-dd')
-  );
+  const [showSearchHelp, setShowSearchHelp] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searchValidation, setSearchValidation] = useState<{ valid: boolean; error?: string }>({ valid: true });
+  
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
 
   const messageTypeOptions = [
     { id: 'text', label: 'Text', icon: '💬' },
@@ -41,21 +43,58 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
   ];
 
   const hasActiveFilters = selectedSenders.length > 0 || searchKeyword || messageTypes.length < 3 || filterDateRange !== null;
+  const suggestions = getSearchSuggestions(searchInput);
 
-  const handleDateRangeApply = () => {
-    const start = startOfDay(new Date(tempStartDate));
-    const end = endOfDay(new Date(tempEndDate));
-    
-    if (start <= end) {
-      setDateRange([start, end]);
-      setShowDatePicker(false);
+  // Validate search query on input change
+  useEffect(() => {
+    if (searchInput.trim()) {
+      const validation = validateSearchQuery(searchInput);
+      setSearchValidation(validation);
+    } else {
+      setSearchValidation({ valid: true });
     }
+  }, [searchInput]);
+
+  // Handle suggestion selection
+  const handleSuggestionSelect = (suggestion: string) => {
+    setSearchInput(suggestion);
+    setShowSuggestions(false);
+    searchInputRef.current?.focus();
+  };
+
+  // Handle search input focus/blur
+  const handleSearchFocus = () => {
+    if (searchInput.length > 0 && suggestions.length > 0) {
+      setShowSuggestions(true);
+    }
+  };
+
+  const handleSearchBlur = (e: React.FocusEvent) => {
+    // Don't hide suggestions if clicking on a suggestion
+    if (suggestionsRef.current?.contains(e.relatedTarget as Node)) {
+      return;
+    }
+    setTimeout(() => setShowSuggestions(false), 150);
+  };
+
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchInput(value);
+    
+    if (value.length > 0 && suggestions.length > 0) {
+      setShowSuggestions(true);
+    } else {
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleDateRangeApply = (range: [Date, Date]) => {
+    setDateRange(range);
+    setShowDatePicker(false);
   };
 
   const handleDateRangeReset = () => {
     setDateRange(null);
-    setTempStartDate(format(dateRange[0], 'yyyy-MM-dd'));
-    setTempEndDate(format(dateRange[1], 'yyyy-MM-dd'));
     setShowDatePicker(false);
   };
 
@@ -69,12 +108,72 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
+              ref={searchInputRef}
               type="text"
-              placeholder="Search messages..."
+              placeholder="Search messages... (try: &quot;exact phrase&quot;, sender:john, hello AND world)"
               value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+              onChange={handleSearchInputChange}
+              onFocus={handleSearchFocus}
+              onBlur={handleSearchBlur}
+              className={clsx(
+                "w-full pl-10 pr-12 py-2 bg-gray-50 dark:bg-gray-900 border rounded-lg focus:outline-none focus:ring-2 dark:text-white",
+                searchValidation.valid
+                  ? "border-gray-200 dark:border-gray-700 focus:ring-blue-500"
+                  : "border-red-300 dark:border-red-600 focus:ring-red-500"
+              )}
             />
+            
+            {/* Search validation indicator */}
+            <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
+              {searchInput && (
+                searchValidation.valid ? (
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                ) : (
+                  <div title={searchValidation.error}>
+                    <AlertCircle className="w-4 h-4 text-red-500" />
+                  </div>
+                )
+              )}
+            </div>
+            
+            {/* Help button */}
+            <button
+              onClick={() => setShowSearchHelp(!showSearchHelp)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              title="Search help"
+            >
+              <HelpCircle className="w-4 h-4" />
+            </button>
+            
+            {/* Search suggestions */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div 
+                ref={suggestionsRef}
+                className="absolute top-full mt-1 left-0 right-0 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-20 max-h-48 overflow-y-auto"
+              >
+                <div className="p-2">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 px-2">Search suggestions:</div>
+                  {suggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleSuggestionSelect(suggestion)}
+                      className="w-full text-left px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-mono"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Search validation error */}
+            {!searchValidation.valid && searchValidation.error && (
+              <div className="absolute top-full mt-1 left-0 right-0 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2 z-20">
+                <div className="text-xs text-red-600 dark:text-red-400">
+                  {searchValidation.error}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -188,56 +287,13 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
           </button>
 
           {showDatePicker && (
-            <div className="absolute top-full mt-2 right-0 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10">
-              <div className="p-4">
-                <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-4">Select Date Range</h3>
-                
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Start Date
-                    </label>
-                    <input
-                      type="date"
-                      value={tempStartDate}
-                      min={format(dateRange[0], 'yyyy-MM-dd')}
-                      max={format(dateRange[1], 'yyyy-MM-dd')}
-                      onChange={(e) => setTempStartDate(e.target.value)}
-                      className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white text-sm"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      End Date
-                    </label>
-                    <input
-                      type="date"
-                      value={tempEndDate}
-                      min={format(dateRange[0], 'yyyy-MM-dd')}
-                      max={format(dateRange[1], 'yyyy-MM-dd')}
-                      onChange={(e) => setTempEndDate(e.target.value)}
-                      className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white text-sm"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-2 mt-4">
-                  <button
-                    onClick={handleDateRangeApply}
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                  >
-                    Apply
-                  </button>
-                  <button
-                    onClick={handleDateRangeReset}
-                    className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors text-sm font-medium"
-                  >
-                    Reset
-                  </button>
-                </div>
-              </div>
-            </div>
+            <DateRangePicker
+              dateRange={dateRange}
+              currentRange={filterDateRange}
+              onApply={handleDateRangeApply}
+              onReset={handleDateRangeReset}
+              onClose={() => setShowDatePicker(false)}
+            />
           )}
         </div>
 
@@ -253,6 +309,70 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
         )}
       </div>
 
+      {/* Search Help Modal */}
+      {showSearchHelp && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Advanced Search Help</h3>
+              <button
+                onClick={() => setShowSearchHelp(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4 text-sm">
+              <div>
+                <h4 className="font-medium text-gray-900 dark:text-white mb-2">Basic Search</h4>
+                <div className="space-y-1 text-gray-600 dark:text-gray-400">
+                  <div><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">hello</code> - Find messages containing "hello"</div>
+                  <div><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">"hello world"</code> - Find exact phrase "hello world"</div>
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-medium text-gray-900 dark:text-white mb-2">Boolean Operators</h4>
+                <div className="space-y-1 text-gray-600 dark:text-gray-400">
+                  <div><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">hello AND world</code> - Both terms must be present</div>
+                  <div><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">hello OR world</code> - Either term must be present</div>
+                  <div><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">hello -world</code> - Contains "hello" but not "world"</div>
+                  <div><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">(john OR mary) AND meeting</code> - Grouping with parentheses</div>
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-medium text-gray-900 dark:text-white mb-2">Field Search</h4>
+                <div className="space-y-1 text-gray-600 dark:text-gray-400">
+                  <div><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">sender:john</code> - Messages from John</div>
+                  <div><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">content:hello</code> - "hello" in message content only</div>
+                  <div><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">type:media</code> - Media messages only</div>
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-medium text-gray-900 dark:text-white mb-2">Wildcards and Patterns</h4>
+                <div className="space-y-1 text-gray-600 dark:text-gray-400">
+                  <div><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">hello*</code> - Words starting with "hello"</div>
+                  <div><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">*world</code> - Words ending with "world"</div>
+                  <div><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">/\d{3}-\d{3}-\d{4}/</code> - Regular expression patterns</div>
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-medium text-gray-900 dark:text-white mb-2">Examples</h4>
+                <div className="space-y-1 text-gray-600 dark:text-gray-400">
+                  <div><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">sender:alice "thank you"</code> - Alice saying "thank you"</div>
+                  <div><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">type:media (john OR mary)</code> - Media from John or Mary</div>
+                  <div><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">meeting AND -cancelled</code> - "meeting" but not "cancelled"</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Click outside to close dropdowns */}
       {(showSenderDropdown || showTypeDropdown || showDatePicker) && (
         <div

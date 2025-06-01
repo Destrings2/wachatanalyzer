@@ -1,5 +1,6 @@
 import { ParsedChat, ProcessedAnalytics, FilterState } from '../types';
 import { performanceCache } from '../utils/cache';
+import { parseSearchQuery, SearchQueryEvaluator } from '../utils/searchParser';
 
 interface FilterWorkerMessage {
   type: 'filter' | 'analyze' | 'partial-analyze' | 'build-indices';
@@ -149,11 +150,26 @@ function filterMessages(
 
   // Apply search keyword filter (always linear, but on reduced set)
   if (filters.searchKeyword.trim()) {
-    const keyword = filters.searchKeyword.toLowerCase().trim();
-    filteredMessages = filteredMessages.filter(msg =>
-      msg.content.toLowerCase().includes(keyword) ||
-      msg.sender.toLowerCase().includes(keyword)
-    );
+    const searchQuery = parseSearchQuery(filters.searchKeyword);
+    
+    if (searchQuery) {
+      const evaluator = new SearchQueryEvaluator();
+      filteredMessages = filteredMessages.filter(msg => 
+        evaluator.evaluate(searchQuery, {
+          content: msg.content,
+          sender: msg.sender,
+          type: msg.type as 'text' | 'media' | 'call',
+          datetime: msg.datetime
+        })
+      );
+    } else {
+      // Fallback to simple search if parsing fails
+      const keyword = filters.searchKeyword.toLowerCase().trim();
+      filteredMessages = filteredMessages.filter(msg =>
+        msg.content.toLowerCase().includes(keyword) ||
+        msg.sender.toLowerCase().includes(keyword)
+      );
+    }
   }
 
   // Filter calls with the same logic
