@@ -22,7 +22,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics })
 
   const ref = useD3(
     (svg) => {
-      const margin = { top: 20, right: 30, bottom: 100, left: 60 };
+      const margin = { top: 20, right: 30, bottom: 80, left: 60 };
       const width = 1000 - margin.left - margin.right;
       const height = 400 - margin.top - margin.bottom;
       const contextHeight = 50;
@@ -171,7 +171,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics })
         .text('Messages');
 
       g.append('text')
-        .attr('transform', `translate(${width / 2}, ${height + margin.bottom})`)
+        .attr('transform', `translate(${width / 2}, ${height + margin.bottom + 50})`)
         .style('text-anchor', 'middle')
         .style('fill', colors.text)
         .style('font-size', '14px')
@@ -264,7 +264,6 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics })
         x.domain(x2.domain());
         updateChart();
       });
-
 
       // Add instruction text
       g.append('text')
