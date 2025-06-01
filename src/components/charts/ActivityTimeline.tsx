@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import * as d3 from 'd3';
 import { ProcessedAnalytics } from '../../types';
 import { useD3 } from '../../hooks/useD3';
@@ -14,6 +14,7 @@ interface ActivityTimelineProps {
 
 export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, settings }) => {
   const { theme } = useUIStore();
+  const [chartType, setChartType] = useState<'line' | 'bar'>('line');
 
   // Transform daily activity data for D3
   const data = useMemo(() => {
@@ -156,100 +157,174 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, s
       const senderPaths: d3.Selection<SVGPathElement, unknown, null, undefined>[] = [];
       const senderDots: d3.Selection<SVGCircleElement, typeof data[0], SVGGElement, unknown>[] = [];
 
-      if (settings.separateMessagesBySender && allSenders.length > 0) {
-        // Multiple lines for each sender
-        allSenders.forEach((sender, index) => {
-          const senderColor = getSenderColor(index, theme);
-          
-          // Line generator for this sender
-          const senderLine = d3.line<typeof data[0]>()
-            .x(d => x(d.date))
-            .y(d => y((d[sender] as number) || 0))
-            .curve(d3.curveMonotoneX);
+      if (chartType === 'bar') {
+        // Bar chart implementation
+        // Calculate dynamic bar width based on visible data points
+        const visibleDomain = x.domain();
+        const visibleData = data.filter(d => d.date >= visibleDomain[0] && d.date <= visibleDomain[1]);
+        const barGroupWidth = Math.min(width / Math.max(visibleData.length, 1) * 0.8, 80); // Cap max width at 80px
+        const barPadding = width / data.length * 0.2;
 
-          // Add line for this sender
-          const senderPath = focus.append('path')
-            .datum(data)
-            .attr('fill', 'none')
-            .attr('stroke', senderColor)
-            .attr('stroke-width', 2)
-            .attr('d', senderLine)
-            .attr('clip-path', 'url(#clip)')
-            .attr('class', `sender-line-${index}`);
-          
-          senderPaths[index] = senderPath;
+        if (settings.separateMessagesBySender && allSenders.length > 0) {
+          // Side-by-side bars for multiple senders
+          const barWidth = barGroupWidth / allSenders.length;
 
-          // Add dots for this sender
-          const senderDotsSelection = focus.selectAll(`.dot-${index}`)
+          allSenders.forEach((sender, index) => {
+            const senderColor = getSenderColor(index, theme);
+            
+            focus.selectAll(`.bar-${index}`)
+              .data(data)
+              .enter().append('rect')
+              .attr('class', `bar bar-${index}`)
+              .attr('x', d => x(d.date) - barGroupWidth / 2 + index * barWidth)
+              .attr('y', d => y((d[sender] as number) || 0))
+              .attr('width', barWidth * 0.9) // Small gap between bars
+              .attr('height', d => height - y((d[sender] as number) || 0))
+              .attr('fill', senderColor)
+              .attr('clip-path', 'url(#clip)')
+              .style('cursor', 'pointer')
+              .on('mouseover', function(event, d) {
+                d3.select(this).style('opacity', 0.8);
+                tooltip.transition().duration(200).style('opacity', 1);
+                tooltip.html(`
+                  <div style="font-weight: bold">${format(d.date, 'MMM d, yyyy')}</div>
+                  <div style="margin-top: 4px; color: ${senderColor}">${sender}: ${d[sender]} messages</div>
+                  <div style="margin-top: 2px">Total: ${d.count} messages</div>
+                `)
+                  .style('left', (event.pageX + 10) + 'px')
+                  .style('top', (event.pageY - 28) + 'px');
+              })
+              .on('mouseout', function() {
+                d3.select(this).style('opacity', 1);
+                tooltip.transition().duration(500).style('opacity', 0);
+              });
+          });
+        } else {
+          // Simple bar chart
+          const barWidth = barGroupWidth;
+          focus.selectAll('.bar')
             .data(data)
-            .enter().append('circle')
-            .attr('class', `dot dot-${index}`)
-            .attr('cx', d => x(d.date))
-            .attr('cy', d => y((d[sender] as number) || 0))
-            .attr('r', 3)
-            .attr('fill', senderColor)
+            .enter().append('rect')
+            .attr('class', 'bar')
+            .attr('x', d => x(d.date) - barWidth / 2)
+            .attr('y', d => y(d.count))
+            .attr('width', barWidth)
+            .attr('height', d => height - y(d.count))
+            .attr('fill', colors.line)
             .attr('clip-path', 'url(#clip)')
             .style('cursor', 'pointer')
             .on('mouseover', function(event, d) {
-              d3.select(this).transition().duration(100).attr('r', 5);
+              d3.select(this).style('opacity', 0.8);
               tooltip.transition().duration(200).style('opacity', 1);
               tooltip.html(`
                 <div style="font-weight: bold">${format(d.date, 'MMM d, yyyy')}</div>
-                <div style="margin-top: 4px; color: ${senderColor}">${sender}: ${d[sender]} messages</div>
-                <div style="margin-top: 2px">Total: ${d.count} messages</div>
+                <div style="margin-top: 4px">${d.count} messages</div>
               `)
                 .style('left', (event.pageX + 10) + 'px')
                 .style('top', (event.pageY - 28) + 'px');
             })
             .on('mouseout', function() {
-              d3.select(this).transition().duration(100).attr('r', 3);
+              d3.select(this).style('opacity', 1);
               tooltip.transition().duration(500).style('opacity', 0);
             });
-          
-          senderDots[index] = senderDotsSelection;
-        });
+        }
       } else {
-        // Single line/area (default behavior)
-        areaPath = focus.append('path')
-          .datum(data)
-          .attr('fill', colors.area)
-          .attr('fill-opacity', 0.1)
-          .attr('d', area)
-          .attr('clip-path', 'url(#clip)');
+        // Line chart implementation (existing code)
+        if (settings.separateMessagesBySender && allSenders.length > 0) {
+          // Multiple lines for each sender
+          allSenders.forEach((sender, index) => {
+            const senderColor = getSenderColor(index, theme);
+            
+            // Line generator for this sender
+            const senderLine = d3.line<typeof data[0]>()
+              .x(d => x(d.date))
+              .y(d => y((d[sender] as number) || 0))
+              .curve(d3.curveMonotoneX);
 
-        linePath = focus.append('path')
-          .datum(data)
-          .attr('fill', 'none')
-          .attr('stroke', colors.line)
-          .attr('stroke-width', 2)
-          .attr('d', line)
-          .attr('clip-path', 'url(#clip)');
+            // Add line for this sender
+            const senderPath = focus.append('path')
+              .datum(data)
+              .attr('fill', 'none')
+              .attr('stroke', senderColor)
+              .attr('stroke-width', 2)
+              .attr('d', senderLine)
+              .attr('clip-path', 'url(#clip)')
+              .attr('class', `sender-line-${index}`);
+            
+            senderPaths[index] = senderPath;
 
-        // Interactive dots with clipping
-        dots = focus.selectAll('.dot')
-          .data(data)
-          .enter().append('circle')
-          .attr('class', 'dot')
-          .attr('cx', d => x(d.date))
-          .attr('cy', d => y(d.count))
-          .attr('r', 4)
-          .attr('fill', colors.line)
-          .attr('clip-path', 'url(#clip)')
-          .style('cursor', 'pointer')
-          .on('mouseover', function(event, d) {
-            d3.select(this).transition().duration(100).attr('r', 6);
-            tooltip.transition().duration(200).style('opacity', 1);
-            tooltip.html(`
-              <div style="font-weight: bold">${format(d.date, 'MMM d, yyyy')}</div>
-              <div style="margin-top: 4px">${d.count} messages</div>
-            `)
-              .style('left', (event.pageX + 10) + 'px')
-              .style('top', (event.pageY - 28) + 'px');
-          })
-          .on('mouseout', function() {
-            d3.select(this).transition().duration(100).attr('r', 4);
-            tooltip.transition().duration(500).style('opacity', 0);
+            // Add dots for this sender
+            const senderDotsSelection = focus.selectAll(`.dot-${index}`)
+              .data(data)
+              .enter().append('circle')
+              .attr('class', `dot dot-${index}`)
+              .attr('cx', d => x(d.date))
+              .attr('cy', d => y((d[sender] as number) || 0))
+              .attr('r', 3)
+              .attr('fill', senderColor)
+              .attr('clip-path', 'url(#clip)')
+              .style('cursor', 'pointer')
+              .on('mouseover', function(event, d) {
+                d3.select(this).transition().duration(100).attr('r', 5);
+                tooltip.transition().duration(200).style('opacity', 1);
+                tooltip.html(`
+                  <div style="font-weight: bold">${format(d.date, 'MMM d, yyyy')}</div>
+                  <div style="margin-top: 4px; color: ${senderColor}">${sender}: ${d[sender]} messages</div>
+                  <div style="margin-top: 2px">Total: ${d.count} messages</div>
+                `)
+                  .style('left', (event.pageX + 10) + 'px')
+                  .style('top', (event.pageY - 28) + 'px');
+              })
+              .on('mouseout', function() {
+                d3.select(this).transition().duration(100).attr('r', 3);
+                tooltip.transition().duration(500).style('opacity', 0);
+              });
+            
+            senderDots[index] = senderDotsSelection;
           });
+        } else {
+          // Single line/area (default behavior)
+          areaPath = focus.append('path')
+            .datum(data)
+            .attr('fill', colors.area)
+            .attr('fill-opacity', 0.1)
+            .attr('d', area)
+            .attr('clip-path', 'url(#clip)');
+
+          linePath = focus.append('path')
+            .datum(data)
+            .attr('fill', 'none')
+            .attr('stroke', colors.line)
+            .attr('stroke-width', 2)
+            .attr('d', line)
+            .attr('clip-path', 'url(#clip)');
+
+          // Interactive dots with clipping
+          dots = focus.selectAll('.dot')
+            .data(data)
+            .enter().append('circle')
+            .attr('class', 'dot')
+            .attr('cx', d => x(d.date))
+            .attr('cy', d => y(d.count))
+            .attr('r', 4)
+            .attr('fill', colors.line)
+            .attr('clip-path', 'url(#clip)')
+            .style('cursor', 'pointer')
+            .on('mouseover', function(event, d) {
+              d3.select(this).transition().duration(100).attr('r', 6);
+              tooltip.transition().duration(200).style('opacity', 1);
+              tooltip.html(`
+                <div style="font-weight: bold">${format(d.date, 'MMM d, yyyy')}</div>
+                <div style="margin-top: 4px">${d.count} messages</div>
+              `)
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 28) + 'px');
+            })
+            .on('mouseout', function() {
+              d3.select(this).transition().duration(100).attr('r', 4);
+              tooltip.transition().duration(500).style('opacity', 0);
+            });
+        }
       }
 
       // X Axis
@@ -408,36 +483,59 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, s
       }
 
       function updateChart() {
-        if (settings.separateMessagesBySender && allSenders.length > 0) {
-          // Update sender lines and dots
-          allSenders.forEach((sender, index) => {
-            const senderLine = d3.line<typeof data[0]>()
-              .x(d => x(d.date))
-              .y(d => y((d[sender] as number) || 0))
-              .curve(d3.curveMonotoneX);
-
-            if (senderPaths[index]) {
-              senderPaths[index].datum(data).attr('d', senderLine);
-            }
-
-            if (senderDots[index]) {
-              senderDots[index]
-                .attr('cx', d => x(d.date))
-                .attr('cy', d => y((d[sender] as number) || 0));
-            }
-          });
+        if (chartType === 'bar') {
+          // Update bar positions with dynamic width
+          const visibleDomain = x.domain();
+          const visibleData = data.filter(d => d.date >= visibleDomain[0] && d.date <= visibleDomain[1]);
+          const barGroupWidth = Math.min(width / Math.max(visibleData.length, 1) * 0.8, 80); // Cap max width at 80px
+          
+          if (settings.separateMessagesBySender && allSenders.length > 0) {
+            // Update side-by-side bars
+            const barWidth = barGroupWidth / allSenders.length;
+            allSenders.forEach((_, index) => {
+              focus.selectAll(`.bar-${index}`)
+                .attr('x', (d: any) => x(d.date) - barGroupWidth / 2 + index * barWidth)
+                .attr('width', barWidth * 0.9);
+            });
+          } else {
+            // Update simple bars
+            focus.selectAll('.bar')
+              .attr('x', (d: any) => x(d.date) - barGroupWidth / 2)
+              .attr('width', barGroupWidth);
+          }
         } else {
-          // Update single line/area
-          if (areaPath) {
-            areaPath.datum(data).attr('d', area);
-          }
-          if (linePath) {
-            linePath.datum(data).attr('d', line);
-          }
-          if (dots) {
-            dots
-              .attr('cx', d => x(d.date))
-              .attr('cy', d => y(d.count));
+          // Update line chart
+          if (settings.separateMessagesBySender && allSenders.length > 0) {
+            // Update sender lines and dots
+            allSenders.forEach((sender, index) => {
+              const senderLine = d3.line<typeof data[0]>()
+                .x(d => x(d.date))
+                .y(d => y((d[sender] as number) || 0))
+                .curve(d3.curveMonotoneX);
+
+              if (senderPaths[index]) {
+                senderPaths[index].datum(data).attr('d', senderLine);
+              }
+
+              if (senderDots[index]) {
+                senderDots[index]
+                  .attr('cx', d => x(d.date))
+                  .attr('cy', d => y((d[sender] as number) || 0));
+              }
+            });
+          } else {
+            // Update single line/area
+            if (areaPath) {
+              areaPath.datum(data).attr('d', area);
+            }
+            if (linePath) {
+              linePath.datum(data).attr('d', line);
+            }
+            if (dots) {
+              dots
+                .attr('cx', d => x(d.date))
+                .attr('cy', d => y(d.count));
+            }
           }
         }
 
@@ -460,7 +558,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, s
         d3.selectAll('.tooltip').remove();
       };
     },
-    [data, theme, settings.separateMessagesBySender, analytics.timePatterns.dailyActivity]
+    [data, theme, settings.separateMessagesBySender, analytics.timePatterns.dailyActivity, chartType]
   );
 
   const totalMessages = data.reduce((sum, d) => sum + d.count, 0);
@@ -468,7 +566,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, s
 
   return (
     <div>
-      <div className="mb-6">
+      <div className="mb-4">
         <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
           Message Activity Timeline
         </h3>
@@ -476,6 +574,45 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, s
           Daily message count over time • Average: {avgPerDay} messages/day
         </p>
       </div>
+      
+      {/* Chart type toggle */}
+      <div className="mb-4 flex justify-center">
+        <div className="inline-flex rounded-lg shadow-sm" role="group">
+          <button
+            type="button"
+            onClick={() => setChartType('line')}
+            className={`
+              px-4 py-2 text-sm font-medium rounded-l-lg border transition-all duration-200
+              ${chartType === 'line'
+                ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700 shadow-inner'
+                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:text-white'
+              }
+            `}
+          >
+            <svg className="w-4 h-4 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4v16" />
+            </svg>
+            Line Chart
+          </button>
+          <button
+            type="button"
+            onClick={() => setChartType('bar')}
+            className={`
+              px-4 py-2 text-sm font-medium rounded-r-lg border border-l-0 transition-all duration-200
+              ${chartType === 'bar'
+                ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700 shadow-inner'
+                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:text-white'
+              }
+            `}
+          >
+            <svg className="w-4 h-4 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            Bar Chart
+          </button>
+        </div>
+      </div>
+
       <div className="overflow-x-auto">
         <svg ref={ref} />
       </div>
