@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Message, Call, Participant, ChatMetadata, ProcessedAnalytics } from '../types';
 import { parseWhatsAppChatWithWorker } from '../utils/parserWorker';
 import { analyzeChat } from '../utils/analyzer';
+import { performanceCache } from '../utils/cache';
 
 interface ChatStore {
   // Raw Data
@@ -37,6 +38,9 @@ export const useChatStore = create<ChatStore>((set) => ({
   // Actions
   loadChatFile: async (file: File) => {
     set({ isLoading: true, error: null, progress: 0 });
+    
+    // Clear all caches when loading new data
+    performanceCache.clearAll();
     
     try {
       // Read file content in chunks for large files

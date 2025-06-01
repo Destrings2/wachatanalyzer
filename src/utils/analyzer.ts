@@ -43,23 +43,42 @@ const francToStopwordMap: Record<string, StopwordLanguage> = {
   ind: 'ind', // Indonesian
 };
 
+// Cached stopwords to avoid repeated language detection
+const stopwordCache = new Map<string, string[]>();
+const languageCache = new Map<string, string>();
+
 // Get stopwords for detected language
 function getStopwords(text: string): string[] {
-  // Use franc to detect language (returns ISO 639-3 code)
-  const detectedLang = franc(text);
+  // Use cached result if available
+  const cacheKey = text.slice(0, 200); // Use first 200 chars as cache key
+  if (stopwordCache.has(cacheKey)) {
+    return stopwordCache.get(cacheKey)!;
+  }
+
+  // Use franc to detect language (returns ISO 639-3 code) with caching
+  let detectedLang = languageCache.get(cacheKey);
+  if (!detectedLang) {
+    detectedLang = franc(text);
+    languageCache.set(cacheKey, detectedLang);
+  }
   
   // Map to stopword language code
   const stopwordLang = francToStopwordMap[detectedLang];
   
   // Return stopwords for detected language, fallback to English
+  let stopwords: string[];
   if (stopwordLang && stopwordLang in sw) {
-    return sw[stopwordLang] as string[];
+    stopwords = sw[stopwordLang] as string[];
+  } else {
+    stopwords = sw.eng as string[];
   }
   
-  return sw.eng as string[];
+  // Cache the result
+  stopwordCache.set(cacheKey, stopwords);
+  return stopwords;
 }
 
-function analyzeMessageStats(chat: ParsedChat): MessageStats {
+export function analyzeMessageStats(chat: ParsedChat): MessageStats {
   const messagesPerSender: Record<string, number> = {};
   const mediaPerSender: Record<string, number> = {};
   let totalWords = 0;
@@ -86,7 +105,7 @@ function analyzeMessageStats(chat: ParsedChat): MessageStats {
   };
 }
 
-function analyzeTimePatterns(chat: ParsedChat): TimePatterns {
+export function analyzeTimePatterns(chat: ParsedChat): TimePatterns {
   const hourlyActivity: Record<number, number> = {};
   const dailyActivity: Record<string, number> = {};
   const weeklyActivity: Record<number, number> = {};
@@ -116,7 +135,7 @@ function analyzeTimePatterns(chat: ParsedChat): TimePatterns {
   };
 }
 
-function analyzeEmojis(chat: ParsedChat): EmojiAnalysis {
+export function analyzeEmojis(chat: ParsedChat): EmojiAnalysis {
   const emojiFrequency: Record<string, number> = {};
   const emojisPerSender: Record<string, Record<string, number>> = {};
   let totalEmojis = 0;
@@ -150,43 +169,49 @@ function analyzeEmojis(chat: ParsedChat): EmojiAnalysis {
   };
 }
 
-function analyzeWordFrequency(chat: ParsedChat): WordFrequency {
+export function analyzeWordFrequency(chat: ParsedChat): WordFrequency {
   const wordCount: Record<string, number> = {};
   
-  // Collect sample text for language detection
-  const sampleText = chat.messages
-    .filter(msg => msg.type === 'text')
-    .slice(0, 100)
+  // Filter text messages first for efficiency
+  const textMessages = chat.messages.filter(msg => msg.type === 'text');
+  if (textMessages.length === 0) {
+    return {
+      topWords: [],
+      wordCloud: {},
+      uniqueWords: 0,
+      languageDetected: 'eng',
+    };
+  }
+  
+  // Collect sample text for language detection (optimized)
+  const sampleText = textMessages
+    .slice(0, Math.min(100, textMessages.length))
     .map(msg => msg.content)
     .join(' ');
   
   const detectedLang = franc(sampleText);
   const stopwords = getStopwords(sampleText);
   
-  // Process messages in batches to avoid stack overflow
-  const batchSize = 100;
-  for (let i = 0; i < chat.messages.length; i += batchSize) {
-    const batch = chat.messages.slice(i, i + batchSize);
+  // Optimized word processing with early termination for large datasets
+  const maxMessages = Math.min(textMessages.length, 10000); // Limit for performance
+  const wordRegex = /\b\w{3,}\b/g; // Pre-compiled regex for better performance
+  
+  for (let i = 0; i < maxMessages; i++) {
+    const msg = textMessages[i];
+    const content = msg.content.toLowerCase();
+    const words = content.match(wordRegex) || [];
     
-    for (const msg of batch) {
-      if (msg.type === 'text') {
-        const words = msg.content
-          .toLowerCase()
-          .replace(/[^\w\s]/g, ' ')
-          .split(/\s+/)
-          .filter(word => word.length > 2);
-        
-        // Process words in smaller chunks to avoid call stack issues
-        for (let j = 0; j < words.length; j += 50) {
-          const wordChunk = words.slice(j, j + 50);
-          const filteredWords = sw.removeStopwords(wordChunk, stopwords);
-          
-          for (const word of filteredWords) {
-            wordCount[word] = (wordCount[word] || 0) + 1;
-          }
-        }
+    // Batch process stopword removal for efficiency
+    if (words.length > 0) {
+      const filteredWords = sw.removeStopwords(words, stopwords);
+      
+      for (const word of filteredWords) {
+        wordCount[word] = (wordCount[word] || 0) + 1;
       }
     }
+    
+    // Early termination if we have enough data
+    if (Object.keys(wordCount).length > 5000) break;
   }
   
   const topWords = Object.entries(wordCount)
@@ -202,7 +227,7 @@ function analyzeWordFrequency(chat: ParsedChat): WordFrequency {
   };
 }
 
-function analyzeResponseMetrics(chat: ParsedChat): ResponseMetrics {
+export function analyzeResponseMetrics(chat: ParsedChat): ResponseMetrics {
   const responseTimes: number[] = [];
   const responseTimePerSender: Record<string, number[]> = {};
   const conversationInitiators: Record<string, number> = {};
@@ -251,7 +276,7 @@ function analyzeResponseMetrics(chat: ParsedChat): ResponseMetrics {
   };
 }
 
-function analyzeCallAnalytics(chat: ParsedChat): CallAnalytics {
+export function analyzeCallAnalytics(chat: ParsedChat): CallAnalytics {
   const callsByHour: Record<number, number> = {};
   const callsByDay: Record<number, number> = {};
   

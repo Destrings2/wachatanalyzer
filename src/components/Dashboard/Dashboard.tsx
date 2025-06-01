@@ -12,10 +12,11 @@ import clsx from 'clsx';
 export const Dashboard: React.FC = () => {
   const { analytics, metadata, participants, rawMessages, rawCalls } = useChatStore();
   const { theme, toggleTheme, sidebarCollapsed, toggleSidebar } = useUIStore();
-  const { selectedSenders, searchKeyword, messageTypes, dateRange, filterAndAnalyze, isFiltering } = useFilterStore();
+  const { selectedSenders, searchKeyword, messageTypes, dateRange, filterAndAnalyze, isFiltering, initializeIndices } = useFilterStore();
   
   const [selectedChart, setSelectedChart] = useState('timeline');
   const [filteredAnalytics, setFilteredAnalytics] = useState<ProcessedAnalytics | null>(null);
+  const [indicesInitialized, setIndicesInitialized] = useState(false);
 
   const chartTypes = [
     { id: 'timeline', name: 'Activity Timeline', icon: '📈' },
@@ -25,6 +26,29 @@ export const Dashboard: React.FC = () => {
     { id: 'response', name: 'Response Patterns', icon: '↩️' },
     { id: 'network', name: 'Chat Network', icon: '🕸️' },
   ];
+
+  // Reset indices flag when data changes
+  useEffect(() => {
+    setIndicesInitialized(false);
+  }, [rawMessages]);
+
+  // Initialize indices when data is first loaded
+  useEffect(() => {
+    if (!indicesInitialized && analytics && metadata && rawMessages && rawMessages.length > 0) {
+      const originalChat = {
+        messages: rawMessages,
+        calls: rawCalls || [],
+        participants: participants || [],
+        metadata
+      };
+      
+      initializeIndices(originalChat)
+        .then(() => {
+          setIndicesInitialized(true);
+        })
+        .catch(console.error);
+    }
+  }, [analytics, metadata, rawMessages, rawCalls, participants, indicesInitialized, initializeIndices]);
 
   // Apply filters asynchronously when they change
   useEffect(() => {
@@ -42,7 +66,12 @@ export const Dashboard: React.FC = () => {
     
     // Always apply filters using worker for consistency
     filterAndAnalyze(originalChat)
-      .then(setFilteredAnalytics)
+      .then((analytics) => {
+        // Small delay to ensure smooth loading transition
+        requestAnimationFrame(() => {
+          setFilteredAnalytics(analytics);
+        });
+      })
       .catch(console.error);
   }, [analytics, metadata, rawMessages, rawCalls, participants, selectedSenders, searchKeyword, messageTypes, dateRange, filterAndAnalyze]);
 

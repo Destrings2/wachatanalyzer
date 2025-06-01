@@ -12,9 +12,9 @@ interface ChartContainerProps {
   isLoading?: boolean;
 }
 
-export const ChartContainer: React.FC<ChartContainerProps> = ({ 
-  chartType, 
-  analytics, 
+export const ChartContainer: React.FC<ChartContainerProps> = ({
+  chartType,
+  analytics,
   messages,
   isLoading = false
 }) => {
@@ -39,7 +39,7 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
 
   return (
     <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-      <Suspense 
+      <Suspense
         fallback={
           <div className="flex items-center justify-center h-96">
             <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
@@ -48,13 +48,13 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
       >
         {renderChart()}
       </Suspense>
-      
+
       {/* Loading Overlay */}
       {isLoading && (
         <div className="absolute inset-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl flex items-center justify-center">
           <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
             <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-            <span className="font-medium">Applying filters...</span>
+            <span className="font-medium">Loading...</span>
           </div>
         </div>
       )}
