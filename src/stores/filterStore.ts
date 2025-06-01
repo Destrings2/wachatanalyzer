@@ -100,7 +100,11 @@ export const useFilterStore = create<FilterStore>((set, get) => ({
       searchDebounceTimer = null;
     }
     // Don't clear performance cache on filter reset, only UI state
-    set({ ...initialState, searchInput: '' });
+    set({ 
+      ...initialState, 
+      searchInput: '',
+      isFiltering: false 
+    });
   },
 
   initializeIndices: async (chat: ParsedChat): Promise<void> => {
