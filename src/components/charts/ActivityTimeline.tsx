@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useCallback } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import * as d3 from 'd3';
 import { ProcessedAnalytics } from '../../types';
 import { useD3 } from '../../hooks/useD3';
@@ -15,7 +15,7 @@ interface ActivityTimelineProps {
 export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, settings }) => {
   const { theme } = useUIStore();
   const [chartType, setChartType] = useState<'line' | 'bar'>('line');
-  
+
   // Store brush selection (not domain) to maintain zoom state
   const brushSelectionRef = useRef<[number, number] | null>(null);
 
@@ -23,28 +23,28 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, s
   const data = useMemo(() => {
     const dailyBySender = analytics.timePatterns.dailyActivity;
     const allSenders = Object.keys(dailyBySender).sort();
-    
+
     if (settings.separateMessagesBySender) {
       // Create data with separate series for each sender
       const allDates = new Set<string>();
       Object.values(dailyBySender).forEach(senderData => {
         Object.keys(senderData).forEach(date => allDates.add(date));
       });
-      
+
       const dates = Array.from(allDates).sort();
       return dates.map(date => {
         const result: { date: Date; count: number; [key: string]: Date | number } = {
           date: new Date(date),
           count: 0
         };
-        
+
         // Add count for each sender and calculate total
         allSenders.forEach(sender => {
           const senderCount = dailyBySender[sender]?.[date] || 0;
           result[sender] = senderCount;
           result.count += senderCount;
         });
-        
+
         return result;
       });
     } else {
@@ -69,7 +69,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, s
       const colors = getChartColors(theme);
 
       // Get unique senders from analytics data
-      const allSenders = settings.separateMessagesBySender 
+      const allSenders = settings.separateMessagesBySender
         ? Object.keys(analytics.timePatterns.dailyActivity).sort()
         : [];
 
@@ -174,7 +174,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, s
 
           allSenders.forEach((sender, index) => {
             const senderColor = getSenderColor(index, theme);
-            
+
             focus.selectAll(`.bar-${index}`)
               .data(data)
               .enter().append('rect')
@@ -237,7 +237,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, s
           // Multiple lines for each sender
           allSenders.forEach((sender, index) => {
             const senderColor = getSenderColor(index, theme);
-            
+
             // Line generator for this sender
             const senderLine = d3.line<typeof data[0]>()
               .x(d => x(d.date))
@@ -253,7 +253,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, s
               .attr('d', senderLine)
               .attr('clip-path', 'url(#clip)')
               .attr('class', `sender-line-${index}`);
-            
+
             senderPaths[index] = senderPath;
 
             // Add dots for this sender
@@ -282,7 +282,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, s
                 d3.select(this).transition().duration(100).attr('r', 3);
                 tooltip.transition().duration(500).style('opacity', 0);
               });
-            
+
             senderDots[index] = senderDotsSelection;
           });
         } else {
@@ -494,7 +494,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, s
         const sArray = Array.isArray(s) ? s as [number, number] : x2.range() as [number, number];
         x.domain([x2.invert(sArray[0]), x2.invert(sArray[1])]);
         updateChart();
-        
+
         // Store brush selection (pixel positions)
         if (event.selection) {
           brushSelectionRef.current = sArray;
@@ -509,7 +509,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, s
           const visibleDomain = x.domain();
           const visibleData = data.filter(d => d.date >= visibleDomain[0] && d.date <= visibleDomain[1]);
           const barGroupWidth = Math.min(width / Math.max(visibleData.length, 1) * 0.8, 80); // Cap max width at 80px
-          
+
           if (settings.separateMessagesBySender && allSenders.length > 0) {
             // Update side-by-side bars
             const barWidth = barGroupWidth / allSenders.length;
@@ -595,7 +595,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, s
           Daily message count over time • Average: {avgPerDay} messages/day
         </p>
       </div>
-      
+
       {/* Chart type toggle */}
       <div className="mb-4 flex justify-center">
         <div className="inline-flex rounded-lg shadow-sm" role="group">

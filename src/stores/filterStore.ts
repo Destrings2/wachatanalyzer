@@ -20,7 +20,7 @@ interface FilterStore extends FilterState {
   resetFilters: () => void;
 
   // Async filtering and analytics
-  filterAndAnalyze: (chat: ParsedChat) => Promise<ProcessedAnalytics>;
+  filterAndAnalyze: (chat: ParsedChat) => Promise<{ analytics: ProcessedAnalytics; filteredChat: ParsedChat }>;
   filterOnly: (chat: ParsedChat) => Promise<ParsedChat>;
   analyzeOnly: (chat: ParsedChat) => Promise<ProcessedAnalytics>;
   initializeIndices: (chat: ParsedChat) => Promise<void>;
@@ -100,10 +100,10 @@ export const useFilterStore = create<FilterStore>((set, get) => ({
       searchDebounceTimer = null;
     }
     // Don't clear performance cache on filter reset, only UI state
-    set({ 
-      ...initialState, 
+    set({
+      ...initialState,
       searchInput: '',
-      isFiltering: false 
+      isFiltering: false
     });
   },
 
@@ -145,8 +145,6 @@ export const useFilterStore = create<FilterStore>((set, get) => ({
       const chatHash = generateChatHash(chat);
       const worker = getFilterWorker();
       const measurement = performanceMonitor.startMeasurement('filter-only');
-
-      // Don't set isFiltering here - let filterAndAnalyze manage it
 
       const handleMessage = (event: MessageEvent) => {
         const { type, filteredChat, error, cacheHit, processingTime } = event.data;
@@ -215,10 +213,10 @@ export const useFilterStore = create<FilterStore>((set, get) => ({
     });
   },
 
-  filterAndAnalyze: async (chat: ParsedChat): Promise<ProcessedAnalytics> => {
+  filterAndAnalyze: async (chat: ParsedChat): Promise<{ analytics: ProcessedAnalytics; filteredChat: ParsedChat }> => {
     const state = get();
     const measurement = performanceMonitor.startMeasurement('filter-and-analyze');
-    
+
     // Set loading state at the beginning
     set({ isFiltering: true });
 
@@ -236,8 +234,8 @@ export const useFilterStore = create<FilterStore>((set, get) => ({
 
       // Clear loading state only after everything is done
       set({ isFiltering: false });
-      
-      return analytics;
+
+      return { analytics, filteredChat };
     } catch (error) {
       performanceMonitor.endMeasurement(measurement, { error: true });
       set({ isFiltering: false });

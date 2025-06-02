@@ -5,7 +5,7 @@ import { useFilterStore } from '../../stores/filterStore';
 import { StatsOverview } from './StatsOverview';
 import { FilterBar } from './FilterBar';
 import { ChartContainer } from './ChartContainer';
-import { ProcessedAnalytics } from '../../types';
+import { ProcessedAnalytics, Message } from '../../types';
 import { Moon, Sun, Menu, X } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -16,6 +16,7 @@ export const Dashboard: React.FC = () => {
   
   const [selectedChart, setSelectedChart] = useState('timeline');
   const [filteredAnalytics, setFilteredAnalytics] = useState<ProcessedAnalytics | null>(null);
+  const [filteredMessages, setFilteredMessages] = useState<Message[] | null>(null);
   const [indicesInitialized, setIndicesInitialized] = useState(false);
 
   const chartTypes = [
@@ -68,10 +69,11 @@ export const Dashboard: React.FC = () => {
     
     // Always apply filters using worker for consistency
     filterAndAnalyze(originalChat)
-      .then((analytics) => {
+      .then((result) => {
         // Small delay to ensure smooth loading transition
         requestAnimationFrame(() => {
-          setFilteredAnalytics(analytics);
+          setFilteredAnalytics(result.analytics);
+          setFilteredMessages(result.filteredChat.messages);
         });
       })
       .catch(console.error);
@@ -170,6 +172,7 @@ export const Dashboard: React.FC = () => {
             <ChartContainer 
               chartType={selectedChart}
               analytics={filteredAnalytics || analytics}
+              messages={filteredMessages || rawMessages}
               isLoading={isFiltering}
             />
           </div>

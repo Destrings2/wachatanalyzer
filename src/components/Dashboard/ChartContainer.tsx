@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useState } from 'react';
-import { ProcessedAnalytics } from '../../types';
+import { ProcessedAnalytics, Message } from '../../types';
 import { Loader2, Settings, Check } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
 
@@ -12,12 +12,14 @@ const ActivityHeatmap = lazy(() => import('../charts/ActivityHeatmap').then(m =>
 interface ChartContainerProps {
   chartType: string;
   analytics: ProcessedAnalytics;
+  messages: Message[];
   isLoading?: boolean;
 }
 
 export const ChartContainer: React.FC<ChartContainerProps> = ({
   chartType,
   analytics,
+  messages,
   isLoading = false
 }) => {
   const [showSettings, setShowSettings] = useState(false);
@@ -31,7 +33,7 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
       case 'calls':
         return <CallAnalysis analytics={analytics} isLoading={isLoading} />;
       case 'heatmap':
-        return <ActivityHeatmap analytics={analytics} isLoading={isLoading} />;
+        return <ActivityHeatmap analytics={analytics} messages={messages} isLoading={isLoading} />;
       case 'emoji':
         return <div className="text-center py-20 text-gray-500">Emoji Analysis - Coming Soon</div>;
       case 'wordcloud':
