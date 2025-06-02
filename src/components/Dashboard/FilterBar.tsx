@@ -44,6 +44,14 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
 
   const hasActiveFilters = selectedSenders.length > 0 || searchKeyword || messageTypes.length < 3 || filterDateRange !== null;
   const suggestions = getSearchSuggestions(searchInput);
+  
+  // Quick filter shortcuts
+  const quickFilters = [
+    { id: 'today', label: 'Today', icon: '📅' },
+    { id: 'week', label: 'This Week', icon: '📊' },
+    { id: 'month', label: 'This Month', icon: '🗓️' },
+    { id: 'media', label: 'Media Only', icon: '📷' },
+  ];
 
   // Validate search query on input change
   useEffect(() => {
@@ -100,8 +108,59 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
 
   const currentDateRange = filterDateRange || dateRange;
 
+  const handleQuickFilter = (filterId: string) => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    switch (filterId) {
+      case 'today': {
+        setDateRange([today, new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)]);
+        break;
+      }
+      case 'week': {
+        const weekStart = new Date(today.getTime() - today.getDay() * 24 * 60 * 60 * 1000);
+        setDateRange([weekStart, now]);
+        break;
+      }
+      case 'month': {
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        setDateRange([monthStart, now]);
+        break;
+      }
+      case 'media': {
+        // Filter to only media messages
+        if (messageTypes.includes('media')) {
+          toggleMessageType('text');
+          toggleMessageType('call');
+        } else {
+          if (!messageTypes.includes('media')) toggleMessageType('media');
+          if (messageTypes.includes('text')) toggleMessageType('text');
+          if (messageTypes.includes('call')) toggleMessageType('call');
+        }
+        break;
+      }
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+      {/* Quick Filters */}
+      <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center mr-2">
+          Quick filters:
+        </span>
+        {quickFilters.map((filter) => (
+          <button
+            key={filter.id}
+            onClick={() => handleQuickFilter(filter.id)}
+            className="flex items-center gap-1 px-3 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors touch-manipulation"
+          >
+            <span>{filter.icon}</span>
+            <span>{filter.label}</span>
+          </button>
+        ))}
+      </div>
+      
       <div className="flex flex-col lg:flex-row lg:flex-wrap lg:items-center gap-4">
         {/* Search Input */}
         <div className="flex-1 min-w-0 lg:min-w-[200px]">

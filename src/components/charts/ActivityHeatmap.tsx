@@ -337,58 +337,58 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ analytics, mes
       </div>
 
       {/* Enhanced Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 lg:gap-4">
         <Tooltip content="Number of days with at least one message">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center cursor-pointer hover:shadow-md transition-shadow">
-            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 lg:p-4 text-center cursor-pointer hover:shadow-md transition-shadow">
+            <div className="text-lg lg:text-2xl font-bold text-green-600 dark:text-green-400">
               {heatmapData.activeDays || 0}
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Active Days</div>
+            <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">Active Days</div>
           </div>
         </Tooltip>
 
         <Tooltip content="Highest number of messages sent in a single day">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center cursor-pointer hover:shadow-md transition-shadow">
-            <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 lg:p-4 text-center cursor-pointer hover:shadow-md transition-shadow">
+            <div className="text-lg lg:text-2xl font-bold text-purple-600 dark:text-purple-400">
               {heatmapData.maxActivity}
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Peak Day</div>
+            <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">Peak Day</div>
           </div>
         </Tooltip>
 
         <Tooltip content="Longest consecutive days with messages">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center cursor-pointer hover:shadow-md transition-shadow">
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 lg:p-4 text-center cursor-pointer hover:shadow-md transition-shadow">
+            <div className="text-lg lg:text-2xl font-bold text-blue-600 dark:text-blue-400">
               {heatmapData.activityStreaks.longest}
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Longest Streak</div>
+            <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">Longest Streak</div>
           </div>
         </Tooltip>
 
         <Tooltip content="Maximum number of different people active in one day">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center cursor-pointer hover:shadow-md transition-shadow">
-            <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 lg:p-4 text-center cursor-pointer hover:shadow-md transition-shadow">
+            <div className="text-lg lg:text-2xl font-bold text-orange-600 dark:text-orange-400">
               {heatmapData.peakParticipants}
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Peak Participants</div>
+            <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">Peak Participants</div>
           </div>
         </Tooltip>
 
         <Tooltip content="Total media messages (photos, videos, etc.) sent">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center cursor-pointer hover:shadow-md transition-shadow">
-            <div className="text-2xl font-bold text-pink-600 dark:text-pink-400">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 lg:p-4 text-center cursor-pointer hover:shadow-md transition-shadow">
+            <div className="text-lg lg:text-2xl font-bold text-pink-600 dark:text-pink-400">
               {heatmapData.totalMediaMessages}
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Media Messages</div>
+            <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">Media Messages</div>
           </div>
         </Tooltip>
 
         <Tooltip content="Percentage of days with activity in this year">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center cursor-pointer hover:shadow-md transition-shadow">
-            <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 lg:p-4 text-center cursor-pointer hover:shadow-md transition-shadow">
+            <div className="text-lg lg:text-2xl font-bold text-indigo-600 dark:text-indigo-400">
               {Math.round(((heatmapData.activeDays || 0) / heatmapData.totalDays) * 100)}%
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Activity Rate</div>
+            <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">Activity Rate</div>
           </div>
         </Tooltip>
       </div>

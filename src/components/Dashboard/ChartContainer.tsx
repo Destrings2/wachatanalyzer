@@ -2,6 +2,8 @@ import React, { Suspense, lazy, useState } from 'react';
 import { ProcessedAnalytics, Message } from '../../types';
 import { Loader2, Settings, Check } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
+import { ChartSkeleton } from '../ui/Skeleton';
+import { NoDataState, ErrorState } from '../ui/EmptyState';
 
 // Lazy load chart components
 const ActivityTimeline = lazy(() => import('../charts/ActivityTimeline').then(m => ({ default: m.ActivityTimeline })));
@@ -14,17 +16,30 @@ interface ChartContainerProps {
   analytics: ProcessedAnalytics;
   messages: Message[];
   isLoading?: boolean;
+  error?: string;
 }
 
 export const ChartContainer: React.FC<ChartContainerProps> = ({
   chartType,
   analytics,
   messages,
-  isLoading = false
+  isLoading = false,
+  error
 }) => {
   const [showSettings, setShowSettings] = useState(false);
   const { chartSettings, updateChartSettings } = useUIStore();
+  
   const renderChart = () => {
+    // Handle error state
+    if (error) {
+      return <ErrorState error={error} />;
+    }
+    
+    // Handle no data state
+    if (!analytics || !messages || messages.length === 0) {
+      return <NoDataState />;
+    }
+    
     switch (chartType) {
       case 'timeline':
         return <ActivityTimeline analytics={analytics} settings={chartSettings} />;
@@ -35,15 +50,47 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
       case 'heatmap':
         return <ActivityHeatmap analytics={analytics} messages={messages} isLoading={isLoading} />;
       case 'emoji':
-        return <div className="text-center py-20 text-gray-500">Emoji Analysis - Coming Soon</div>;
+        return (
+          <div className="flex items-center justify-center h-64 lg:h-96">
+            <div className="text-center">
+              <div className="text-4xl mb-4">😊</div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Emoji Analysis</h3>
+              <p className="text-gray-600 dark:text-gray-400">Coming Soon</p>
+            </div>
+          </div>
+        );
       case 'wordcloud':
-        return <div className="text-center py-20 text-gray-500">Word Cloud - Coming Soon</div>;
+        return (
+          <div className="flex items-center justify-center h-64 lg:h-96">
+            <div className="text-center">
+              <div className="text-4xl mb-4">💬</div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Word Cloud</h3>
+              <p className="text-gray-600 dark:text-gray-400">Coming Soon</p>
+            </div>
+          </div>
+        );
       case 'response':
-        return <div className="text-center py-20 text-gray-500">Response Patterns - Coming Soon</div>;
+        return (
+          <div className="flex items-center justify-center h-64 lg:h-96">
+            <div className="text-center">
+              <div className="text-4xl mb-4">↩️</div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Response Patterns</h3>
+              <p className="text-gray-600 dark:text-gray-400">Coming Soon</p>
+            </div>
+          </div>
+        );
       case 'network':
-        return <div className="text-center py-20 text-gray-500">Chat Network - Coming Soon</div>;
+        return (
+          <div className="flex items-center justify-center h-64 lg:h-96">
+            <div className="text-center">
+              <div className="text-4xl mb-4">🕸️</div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Chat Network</h3>
+              <p className="text-gray-600 dark:text-gray-400">Coming Soon</p>
+            </div>
+          </div>
+        );
       default:
-        return <div className="text-center py-20 text-gray-500">Select a chart type</div>;
+        return <NoDataState />;
     }
   };
 
@@ -146,8 +193,13 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
       <div className="w-full overflow-x-auto">
         <Suspense
           fallback={
-            <div className="flex items-center justify-center h-64 lg:h-96">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+            <div className="space-y-4">
+              <div className="flex items-center justify-center h-64 lg:h-96 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <div className="flex flex-col items-center gap-3 text-gray-500 dark:text-gray-400">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                  <span className="text-sm font-medium">Loading chart...</span>
+                </div>
+              </div>
             </div>
           }
         >

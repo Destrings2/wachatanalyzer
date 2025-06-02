@@ -70,7 +70,8 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ analytics, metadat
         return (
           <div
             key={index}
-            className="bg-white dark:bg-gray-800 rounded-xl p-4 lg:p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
+            className="bg-white dark:bg-gray-800 rounded-xl p-4 lg:p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover-lift transition-all duration-200 fade-in"
+            style={{ animationDelay: `${index * 50}ms` }}
           >
             <div className="flex items-center justify-between mb-3 lg:mb-4">
               <div className={clsx('p-2 rounded-lg', colorClasses[stat.color as keyof typeof colorClasses])}>

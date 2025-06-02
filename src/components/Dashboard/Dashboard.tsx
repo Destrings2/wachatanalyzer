@@ -7,6 +7,7 @@ import { FilterBar } from './FilterBar';
 import { ChartContainer } from './ChartContainer';
 import { ProcessedAnalytics, Message } from '../../types';
 import { Moon, Sun, Menu, X } from 'lucide-react';
+import { DashboardSkeleton } from '../ui/Skeleton';
 import clsx from 'clsx';
 
 export const Dashboard: React.FC = () => {
@@ -80,11 +81,19 @@ export const Dashboard: React.FC = () => {
   }, [analytics, metadata, rawMessages, rawCalls, participants, selectedSenders, searchKeyword, messageTypes, dateRange, filterAndAnalyze]);
 
   if (!analytics || !metadata) {
-    return <div>Loading...</div>;
+    return <DashboardSkeleton />;
   }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex lg:flex-row flex-col">
+      {/* Skip to content link for screen readers */}
+      <a 
+        href="#main-content" 
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-blue-600 text-white px-4 py-2 rounded-lg z-50 focus:outline-none focus:ring-2 focus:ring-blue-300"
+      >
+        Skip to main content
+      </a>
+      
       {/* Mobile Sidebar Overlay */}
       {!sidebarCollapsed && (
         <div 
@@ -114,14 +123,16 @@ export const Dashboard: React.FC = () => {
             </h1>
             <button
               onClick={toggleSidebar}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors touch-manipulation"
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors touch-manipulation focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              aria-label={sidebarCollapsed ? "Expand navigation" : "Collapse navigation"}
+              aria-expanded={!sidebarCollapsed}
             >
               {sidebarCollapsed ? <Menu className="w-5 h-5" /> : <X className="w-5 h-5" />}
             </button>
           </div>
 
-          <nav className="space-y-2">
-            {chartTypes.map((chart) => (
+          <nav className="space-y-2" role="navigation" aria-label="Chart selection">
+            {chartTypes.map((chart, index) => (
               <button
                 key={chart.id}
                 onClick={() => {
@@ -132,15 +143,18 @@ export const Dashboard: React.FC = () => {
                   }
                 }}
                 className={clsx(
-                  'w-full flex items-center gap-3 px-3 py-3 lg:py-2 rounded-lg transition-all duration-200 touch-manipulation',
+                  'w-full flex items-center gap-3 px-3 py-3 lg:py-2 rounded-lg transition-all duration-200 touch-manipulation slide-in-left group focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
                   selectedChart === chart.id
-                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 scale-in'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:translate-x-1'
                 )}
+                style={{ animationDelay: `${index * 50}ms` }}
+                aria-pressed={selectedChart === chart.id}
+                aria-label={`View ${chart.name} chart`}
               >
-                <span className="text-xl flex-shrink-0">{chart.icon}</span>
+                <span className="text-xl flex-shrink-0 transition-transform duration-200 group-hover:scale-110">{chart.icon}</span>
                 {(!sidebarCollapsed || window.innerWidth < 1024) && (
-                  <span className="font-medium">{chart.name}</span>
+                  <span className="font-medium transition-colors duration-200">{chart.name}</span>
                 )}
               </button>
             ))}
@@ -158,13 +172,23 @@ export const Dashboard: React.FC = () => {
                 {/* Mobile menu button */}
                 <button
                   onClick={toggleSidebar}
-                  className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors touch-manipulation"
-                  aria-label="Toggle menu"
+                  className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors touch-manipulation focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  aria-label="Toggle navigation menu"
+                  aria-expanded={!sidebarCollapsed}
                 >
                   <Menu className="w-5 h-5" />
                 </button>
                 
                 <div className="min-w-0">
+                  {/* Breadcrumb */}
+                  <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mb-1">
+                    <span>Dashboard</span>
+                    <span>•</span>
+                    <span className="text-blue-600 dark:text-blue-400 font-medium">
+                      {chartTypes.find(chart => chart.id === selectedChart)?.name || 'Timeline'}
+                    </span>
+                  </div>
+                  
                   <h2 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white truncate">
                     {metadata.chatType === 'individual' ? 'Chat Analysis' : 'Group Chat Analysis'}
                   </h2>
@@ -190,7 +214,7 @@ export const Dashboard: React.FC = () => {
         </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto">
+        <main id="main-content" className="flex-1 overflow-y-auto">
           <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
             {/* Filter Bar */}
             <FilterBar 
@@ -209,7 +233,7 @@ export const Dashboard: React.FC = () => {
               isLoading={isFiltering}
             />
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );

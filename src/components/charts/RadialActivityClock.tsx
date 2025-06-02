@@ -73,11 +73,16 @@ export const RadialActivityClock: React.FC<RadialActivityClockProps> = ({ analyt
 
   const ref = useD3(
     (svg) => {
-      const containerWidth = 280;
-      const containerHeight = 160;
-      const clockSize = 150;
+      // Get the container width from the SVG parent
+      const containerElement = svg.node()?.parentElement;
+      const availableWidth = containerElement?.clientWidth || 300;
+      const isMobile = availableWidth < 640;
+      
+      const containerWidth = Math.min(availableWidth, isMobile ? 280 : 320);
+      const containerHeight = isMobile ? 180 : 200;
+      const clockSize = Math.min(containerWidth * 0.8, isMobile ? 140 : 180);
       const clockRadius = clockSize / 2;
-      const innerRadius = clockRadius * 0.4;
+      const innerRadius = clockRadius * (isMobile ? 0.3 : 0.4);
       const outerRadius = clockRadius * 0.85;
 
       // Color scheme based on theme

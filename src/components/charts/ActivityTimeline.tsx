@@ -487,15 +487,66 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, s
         }
       }
 
+      // Add drag behavior to main chart for panning when zoomed
+      const drag = d3.drag<SVGRectElement, unknown>()
+        .on('start', function() {
+          // Only enable drag if we're zoomed in (have a brush selection)
+          if (!brushSelectionRef.current) return;
+          d3.select(this).style('cursor', 'grabbing');
+        })
+        .on('drag', function(event) {
+          if (!brushSelectionRef.current) return;
+          
+          const dragDistance = event.dx;
+          
+          // Convert drag distance to scale units
+          const scaleDistance = dragDistance * (x2.domain()[1].getTime() - x2.domain()[0].getTime()) / width;
+          
+          // Calculate new domain
+          const currentDomain = x.domain();
+          const newStart = new Date(currentDomain[0].getTime() - scaleDistance);
+          const newEnd = new Date(currentDomain[1].getTime() - scaleDistance);
+          
+          // Check bounds
+          const fullDomain = x2.domain();
+          if (newStart >= fullDomain[0] && newEnd <= fullDomain[1]) {
+            // Update main chart domain
+            x.domain([newStart, newEnd]);
+            
+            // Update brush position
+            const newBrushStart = x2(newStart);
+            const newBrushEnd = x2(newEnd);
+            brushSelectionRef.current = [newBrushStart, newBrushEnd];
+            
+            // Update brush selection visually
+            brushGroup.call(brush.move, [newBrushStart, newBrushEnd]);
+            
+            // Update chart
+            updateChart();
+          }
+        })
+        .on('end', function() {
+          d3.select(this).style('cursor', brushSelectionRef.current ? 'grab' : 'default');
+        });
+
+      // Apply drag behavior to the main chart area
+      g.append('rect')
+        .attr('class', 'drag-overlay')
+        .attr('width', width)
+        .attr('height', height)
+        .style('fill', 'transparent')
+        .style('cursor', brushSelectionRef.current ? 'grab' : 'default')
+        .call(drag);
+
       // Add instruction text
       g.append('text')
         .attr('x', width / 2)
         .attr('y', -5)
         .style('text-anchor', 'middle')
-        .style('font-size', '12px')
+        .style('font-size', isMobile ? '10px' : '12px')
         .style('fill', colors.text)
         .style('opacity', 0.6)
-        .text('Use the timeline below to zoom in');
+        .text(isMobile ? 'Drag timeline below to zoom' : 'Use the timeline below to zoom in, or drag the chart to pan');
 
       function brushed(event: d3.D3BrushEvent<unknown>) {
         if (event.sourceEvent && event.sourceEvent.type === 'zoom') return;
