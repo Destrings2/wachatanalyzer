@@ -102,21 +102,21 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex flex-col lg:flex-row lg:flex-wrap lg:items-center gap-4">
         {/* Search Input */}
-        <div className="flex-1 min-w-[200px]">
+        <div className="flex-1 min-w-0 lg:min-w-[200px]">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               ref={searchInputRef}
               type="text"
-              placeholder="Search messages... (try: &quot;exact phrase&quot;, sender:john, hello AND world)"
+              placeholder="Search messages..."
               value={searchInput}
               onChange={handleSearchInputChange}
               onFocus={handleSearchFocus}
               onBlur={handleSearchBlur}
               className={clsx(
-                "w-full pl-10 pr-12 py-2 bg-gray-50 dark:bg-gray-900 border rounded-lg focus:outline-none focus:ring-2 dark:text-white",
+                "w-full pl-10 pr-12 py-3 lg:py-2 bg-gray-50 dark:bg-gray-900 border rounded-lg focus:outline-none focus:ring-2 dark:text-white text-base lg:text-sm",
                 searchValidation.valid
                   ? "border-gray-200 dark:border-gray-700 focus:ring-blue-500"
                   : "border-red-300 dark:border-red-600 focus:ring-red-500"
@@ -177,136 +177,139 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
           </div>
         </div>
 
-        {/* Sender Filter */}
-        <div className="relative">
-          <button
-            onClick={() => setShowSenderDropdown(!showSenderDropdown)}
-            className={clsx(
-              'flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors',
-              selectedSenders.length > 0
-                ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400'
-                : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-            )}
-          >
-            <Users className="w-4 h-4" />
-            <span>
-              {selectedSenders.length === 0
-                ? 'All Participants'
-                : `${selectedSenders.length} Selected`}
-            </span>
-          </button>
+        {/* Filter Buttons Row */}
+        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4 lg:gap-4">
+          {/* Sender Filter */}
+          <div className="relative">
+            <button
+              onClick={() => setShowSenderDropdown(!showSenderDropdown)}
+              className={clsx(
+                'flex items-center gap-2 px-4 py-3 lg:py-2 rounded-lg border transition-colors w-full sm:w-auto touch-manipulation',
+                selectedSenders.length > 0
+                  ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400'
+                  : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+              )}
+            >
+              <Users className="w-4 h-4 flex-shrink-0" />
+              <span className="text-sm lg:text-sm">
+                {selectedSenders.length === 0
+                  ? 'All Participants'
+                  : `${selectedSenders.length} Selected`}
+              </span>
+            </button>
 
-          {showSenderDropdown && (
-            <div className="absolute top-full mt-2 left-0 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10">
-              <div className="p-2 max-h-64 overflow-y-auto">
-                {participants.map((participant) => (
-                  <label
-                    key={participant.name}
-                    className="flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedSenders.includes(participant.name)}
-                      onChange={() => toggleSender(participant.name)}
-                      className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-                    />
-                    <div className="flex-1">
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">
-                        {participant.name}
+            {showSenderDropdown && (
+              <div className="absolute top-full mt-2 left-0 w-64 sm:w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10">
+                <div className="p-2 max-h-64 overflow-y-auto">
+                  {participants.map((participant) => (
+                    <label
+                      key={participant.name}
+                      className="flex items-center gap-3 px-3 py-3 lg:py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer touch-manipulation"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedSenders.includes(participant.name)}
+                        onChange={() => toggleSender(participant.name)}
+                        className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 w-4 h-4"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {participant.name}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          {participant.messageCount} messages
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {participant.messageCount} messages
-                      </div>
-                    </div>
-                  </label>
-                ))}
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Message Type Filter */}
-        <div className="relative">
-          <button
-            onClick={() => setShowTypeDropdown(!showTypeDropdown)}
-            className={clsx(
-              'flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors',
-              messageTypes.length < 3
-                ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400'
-                : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
             )}
-          >
-            <Filter className="w-4 h-4" />
-            <span>
-              {messageTypes.length === 3
-                ? 'All Types'
-                : `${messageTypes.length} Types`}
-            </span>
-          </button>
+          </div>
 
-          {showTypeDropdown && (
-            <div className="absolute top-full mt-2 left-0 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10">
-              <div className="p-2">
-                {messageTypeOptions.map((type) => (
-                  <label
-                    key={type.id}
-                    className="flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={messageTypes.includes(type.id as 'text' | 'media' | 'call')}
-                      onChange={() => toggleMessageType(type.id as 'text' | 'media' | 'call')}
-                      className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-lg">{type.icon}</span>
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      {type.label}
-                    </span>
-                  </label>
-                ))}
+          {/* Message Type Filter */}
+          <div className="relative">
+            <button
+              onClick={() => setShowTypeDropdown(!showTypeDropdown)}
+              className={clsx(
+                'flex items-center gap-2 px-4 py-3 lg:py-2 rounded-lg border transition-colors w-full sm:w-auto touch-manipulation',
+                messageTypes.length < 3
+                  ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400'
+                  : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+              )}
+            >
+              <Filter className="w-4 h-4 flex-shrink-0" />
+              <span className="text-sm lg:text-sm">
+                {messageTypes.length === 3
+                  ? 'All Types'
+                  : `${messageTypes.length} Types`}
+              </span>
+            </button>
+
+            {showTypeDropdown && (
+              <div className="absolute top-full mt-2 left-0 w-48 sm:w-52 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10">
+                <div className="p-2">
+                  {messageTypeOptions.map((type) => (
+                    <label
+                      key={type.id}
+                      className="flex items-center gap-3 px-3 py-3 lg:py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer touch-manipulation"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={messageTypes.includes(type.id as 'text' | 'media' | 'call')}
+                        onChange={() => toggleMessageType(type.id as 'text' | 'media' | 'call')}
+                        className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 w-4 h-4"
+                      />
+                      <span className="text-lg flex-shrink-0">{type.icon}</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        {type.label}
+                      </span>
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Date Range Picker */}
-        <div className="relative">
-          <button
-            onClick={() => setShowDatePicker(!showDatePicker)}
-            className={clsx(
-              'flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors',
-              filterDateRange !== null
-                ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400'
-                : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
             )}
-          >
-            <Calendar className="w-4 h-4" />
-            <span className="text-sm">
-              {format(currentDateRange[0], 'MMM d, yyyy')} - {format(currentDateRange[1], 'MMM d, yyyy')}
-            </span>
-          </button>
+          </div>
 
-          {showDatePicker && (
-            <DateRangePicker
-              dateRange={dateRange}
-              currentRange={filterDateRange}
-              onApply={handleDateRangeApply}
-              onReset={handleDateRangeReset}
-              onClose={() => setShowDatePicker(false)}
-            />
+          {/* Date Range Picker */}
+          <div className="relative">
+            <button
+              onClick={() => setShowDatePicker(!showDatePicker)}
+              className={clsx(
+                'flex items-center gap-2 px-4 py-3 lg:py-2 rounded-lg border transition-colors w-full sm:w-auto touch-manipulation',
+                filterDateRange !== null
+                  ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400'
+                  : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+              )}
+            >
+              <Calendar className="w-4 h-4 flex-shrink-0" />
+              <span className="text-xs sm:text-sm truncate">
+                {format(currentDateRange[0], 'MMM d, yyyy')} - {format(currentDateRange[1], 'MMM d, yyyy')}
+              </span>
+            </button>
+
+            {showDatePicker && (
+              <DateRangePicker
+                dateRange={dateRange}
+                currentRange={filterDateRange}
+                onApply={handleDateRangeApply}
+                onReset={handleDateRangeReset}
+                onClose={() => setShowDatePicker(false)}
+              />
+            )}
+          </div>
+
+          {/* Clear Filters */}
+          {hasActiveFilters && (
+            <button
+              onClick={resetFilters}
+              className="flex items-center justify-center gap-2 px-4 py-3 lg:py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors w-full sm:w-auto touch-manipulation"
+            >
+              <X className="w-4 h-4 flex-shrink-0" />
+              <span className="text-sm">Clear</span>
+            </button>
           )}
         </div>
-
-        {/* Clear Filters */}
-        {hasActiveFilters && (
-          <button
-            onClick={resetFilters}
-            className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-          >
-            <X className="w-4 h-4" />
-            <span>Clear</span>
-          </button>
-        )}
       </div>
 
       {/* Search Help Modal */}

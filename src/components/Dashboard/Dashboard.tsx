@@ -84,23 +84,37 @@ export const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex lg:flex-row flex-col">
+      {/* Mobile Sidebar Overlay */}
+      {!sidebarCollapsed && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={toggleSidebar}
+        />
+      )}
+      
       {/* Sidebar */}
       <aside className={clsx(
         'bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-300',
-        sidebarCollapsed ? 'w-16' : 'w-64'
+        'lg:relative lg:translate-x-0',
+        // Desktop behavior
+        'lg:flex lg:flex-col',
+        sidebarCollapsed ? 'lg:w-16' : 'lg:w-64',
+        // Mobile behavior  
+        'fixed top-0 left-0 h-full z-50 lg:z-auto',
+        sidebarCollapsed ? '-translate-x-full lg:translate-x-0' : 'translate-x-0 w-64'
       )}>
-        <div className="p-4">
+        <div className="p-4 flex-1 overflow-y-auto">
           <div className="flex items-center justify-between mb-8">
             <h1 className={clsx(
               'font-bold text-gray-900 dark:text-white transition-all duration-300',
-              sidebarCollapsed ? 'text-sm' : 'text-xl'
+              sidebarCollapsed ? 'text-sm lg:block hidden' : 'text-xl'
             )}>
               {sidebarCollapsed ? 'CA' : 'Chat Analyzer'}
             </h1>
             <button
               onClick={toggleSidebar}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors touch-manipulation"
             >
               {sidebarCollapsed ? <Menu className="w-5 h-5" /> : <X className="w-5 h-5" />}
             </button>
@@ -110,16 +124,22 @@ export const Dashboard: React.FC = () => {
             {chartTypes.map((chart) => (
               <button
                 key={chart.id}
-                onClick={() => setSelectedChart(chart.id)}
+                onClick={() => {
+                  setSelectedChart(chart.id);
+                  // Auto-close sidebar on mobile after selection
+                  if (window.innerWidth < 1024) {
+                    toggleSidebar();
+                  }
+                }}
                 className={clsx(
-                  'w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200',
+                  'w-full flex items-center gap-3 px-3 py-3 lg:py-2 rounded-lg transition-all duration-200 touch-manipulation',
                   selectedChart === chart.id
                     ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
                     : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
                 )}
               >
-                <span className="text-xl">{chart.icon}</span>
-                {!sidebarCollapsed && (
+                <span className="text-xl flex-shrink-0">{chart.icon}</span>
+                {(!sidebarCollapsed || window.innerWidth < 1024) && (
                   <span className="font-medium">{chart.name}</span>
                 )}
               </button>
@@ -129,22 +149,35 @@ export const Dashboard: React.FC = () => {
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-          <div className="px-6 py-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                {metadata.chatType === 'individual' ? 'Chat Analysis' : 'Group Chat Analysis'}
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                {(filteredAnalytics?.messageStats.totalMessages || metadata.totalMessages).toLocaleString()} messages • {participants.length} participants
-              </p>
+          <div className="px-4 lg:px-6 py-4 flex items-center justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-3 lg:gap-0 lg:block">
+                {/* Mobile menu button */}
+                <button
+                  onClick={toggleSidebar}
+                  className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors touch-manipulation"
+                  aria-label="Toggle menu"
+                >
+                  <Menu className="w-5 h-5" />
+                </button>
+                
+                <div className="min-w-0">
+                  <h2 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white truncate">
+                    {metadata.chatType === 'individual' ? 'Chat Analysis' : 'Group Chat Analysis'}
+                  </h2>
+                  <p className="text-xs lg:text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    {(filteredAnalytics?.messageStats.totalMessages || metadata.totalMessages).toLocaleString()} messages • {participants.length} participants
+                  </p>
+                </div>
+              </div>
             </div>
             
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors touch-manipulation flex-shrink-0"
               aria-label="Toggle theme"
             >
               {theme === 'light' ? (
@@ -158,7 +191,7 @@ export const Dashboard: React.FC = () => {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
-          <div className="p-6 space-y-6">
+          <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
             {/* Filter Bar */}
             <FilterBar 
               participants={participants}

@@ -59,10 +59,19 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, s
 
   const ref = useD3(
     (svg) => {
-      const margin = { top: 20, right: 150, bottom: 80, left: 60 };
-      const width = 1000 - margin.left - margin.right;
-      const height = 400 - margin.top - margin.bottom;
-      const contextHeight = 50;
+      // Get the container width from the SVG parent
+      const containerWidth = svg.node()?.parentElement?.clientWidth || 1000;
+      const isMobile = containerWidth < 768;
+      
+      const margin = { 
+        top: 20, 
+        right: isMobile ? 20 : 150, 
+        bottom: isMobile ? 60 : 80, 
+        left: isMobile ? 40 : 60 
+      };
+      const width = Math.max(300, containerWidth - margin.left - margin.right);
+      const height = isMobile ? 300 : 400;
+      const contextHeight = isMobile ? 40 : 50;
       const contextMargin = { top: height + margin.top + 40, bottom: 0 };
 
       // Color scheme based on theme

@@ -37,13 +37,13 @@ export const FileUploader: React.FC = () => {
   }, [loadChatFile]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-8 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen flex items-center justify-center p-4 lg:p-8 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       <div className="w-full max-w-2xl">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+        <div className="text-center mb-6 lg:mb-8">
+          <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-2">
             WhatsApp Chat Analyzer
           </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-300">
+          <p className="text-base lg:text-lg text-gray-600 dark:text-gray-300 px-2">
             Upload your exported chat to get beautiful insights
           </p>
         </div>
@@ -53,7 +53,7 @@ export const FileUploader: React.FC = () => {
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           className={clsx(
-            'relative border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-300',
+            'relative border-2 border-dashed rounded-2xl p-8 lg:p-12 text-center transition-all duration-300 touch-manipulation',
             isDragging
               ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 scale-105'
               : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500',
@@ -68,18 +68,18 @@ export const FileUploader: React.FC = () => {
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           />
           
-          <div className="flex flex-col items-center space-y-4">
+          <div className="flex flex-col items-center space-y-4 lg:space-y-6">
             <div className={clsx(
-              'p-4 rounded-full transition-colors',
+              'p-4 lg:p-6 rounded-full transition-colors',
               isDragging 
                 ? 'bg-blue-100 dark:bg-blue-800' 
                 : 'bg-gray-100 dark:bg-gray-700'
             )}>
               {isLoading ? (
-                <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                <div className="w-10 h-10 lg:w-12 lg:h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
               ) : (
                 <Upload className={clsx(
-                  'w-12 h-12 transition-colors',
+                  'w-10 h-10 lg:w-12 lg:h-12 transition-colors',
                   isDragging 
                     ? 'text-blue-600 dark:text-blue-400' 
                     : 'text-gray-600 dark:text-gray-400'
@@ -87,17 +87,17 @@ export const FileUploader: React.FC = () => {
               )}
             </div>
             
-            <div>
-              <p className="text-lg font-medium text-gray-900 dark:text-white mb-1">
+            <div className="px-4">
+              <p className="text-base lg:text-lg font-medium text-gray-900 dark:text-white mb-1">
                 {isLoading ? 'Processing your chat...' : 'Drop your chat export here'}
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                or click to browse for a .txt file
+                or tap to browse for a .txt file
               </p>
             </div>
 
             <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-              <FileText className="w-4 h-4" />
+              <FileText className="w-4 h-4 flex-shrink-0" />
               <span>WhatsApp chat export (.txt)</span>
             </div>
           </div>
@@ -112,11 +112,11 @@ export const FileUploader: React.FC = () => {
           </div>
         )}
 
-        <div className="mt-8 text-center">
-          <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+        <div className="mt-6 lg:mt-8 text-center px-4">
+          <h3 className="text-sm lg:text-base font-medium text-gray-900 dark:text-white mb-3 lg:mb-2">
             How to export your WhatsApp chat:
           </h3>
-          <ol className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+          <ol className="text-sm text-gray-600 dark:text-gray-400 space-y-2 lg:space-y-1 text-left lg:text-center max-w-md mx-auto">
             <li>1. Open the chat in WhatsApp</li>
             <li>2. Tap the menu (⋮) and select "More"</li>
             <li>3. Choose "Export chat"</li>

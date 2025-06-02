@@ -48,13 +48,13 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
   };
 
   return (
-    <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+    <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 lg:p-6 overflow-hidden">
       {/* Settings Button */}
-      <div className="absolute top-4 right-4 z-10">
+      <div className="absolute top-3 right-3 lg:top-4 lg:right-4 z-10">
         <div className="relative">
           <button
             onClick={() => setShowSettings(!showSettings)}
-            className="p-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+            className="p-2 lg:p-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors touch-manipulation min-w-touch min-h-touch flex items-center justify-center"
             title="Chart Settings"
           >
             <Settings className="w-5 h-5" />
@@ -62,7 +62,7 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
           
           {/* Settings Dropdown */}
           {showSettings && (
-            <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-gray-700 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 p-4 z-20">
+            <div className="absolute right-0 top-full mt-2 w-64 sm:w-72 bg-white dark:bg-gray-700 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 p-4 z-20 max-w-[calc(100vw-2rem)]">
               <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">Chart Settings</h3>
               
               <div className="space-y-3">
@@ -143,22 +143,24 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
         </div>
       </div>
 
-      <Suspense
-        fallback={
-          <div className="flex items-center justify-center h-96">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-          </div>
-        }
-      >
-        {renderChart()}
-      </Suspense>
+      <div className="w-full overflow-x-auto">
+        <Suspense
+          fallback={
+            <div className="flex items-center justify-center h-64 lg:h-96">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+            </div>
+          }
+        >
+          {renderChart()}
+        </Suspense>
+      </div>
 
       {/* Loading Overlay */}
       {isLoading && (
         <div className="absolute inset-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl flex items-center justify-center">
-          <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
+          <div className="flex flex-col sm:flex-row items-center gap-3 text-gray-600 dark:text-gray-400">
             <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-            <span className="font-medium">Loading...</span>
+            <span className="font-medium text-sm lg:text-base">Loading...</span>
           </div>
         </div>
       )}

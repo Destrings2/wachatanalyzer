@@ -1,1 +1,65 @@
 @import 'tailwindcss';
+
+/* Mobile optimization utilities */
+@layer base {
+  /* Improved touch targets for mobile */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+  
+  /* Better text rendering on mobile */
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  
+  /* Prevent horizontal scroll on mobile */
+  html, body {
+    overflow-x: hidden;
+  }
+  
+  /* Better tap highlights */
+  button, input, select, textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Improved scrolling on iOS */
+  .scroll-smooth {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@layer utilities {
+  /* Custom mobile-first responsive utilities */
+  .mobile-padding {
+    @apply px-4 lg:px-6;
+  }
+  
+  .mobile-text {
+    @apply text-sm lg:text-base;
+  }
+  
+  .mobile-heading {
+    @apply text-lg lg:text-xl;
+  }
+  
+  /* Better mobile form controls */
+  .mobile-input {
+    @apply py-3 lg:py-2 text-base lg:text-sm;
+  }
+  
+  /* Mobile-friendly card spacing */
+  .mobile-card {
+    @apply p-4 lg:p-6;
+  }
+  
+  /* Safe area for devices with notches */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
