@@ -38,8 +38,11 @@ export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
   // Chunking state
   const [visibleRange, setVisibleRange] = useState({ start: 0, end: CHUNK_SIZE });
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastScrollTopRef = useRef<number>(0);
+  
+  // Enhanced scroll management refs
+  const scrollDebounceRef = useRef<number | null>(null);
+  const isUserScrollingRef = useRef(false);
 
   // Apply client-side filtering (simple version)
   const filteredMessages = useMemo(() => {
@@ -141,44 +144,103 @@ export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
     return chatItems.slice(start, end);
   }, [chatItems, visibleRange]);
 
-  // Scroll handling for infinite scroll
+  // Load more content with scroll position preservation
+  const loadMoreContent = useCallback((direction: 'up' | 'down') => {
+    if (isLoadingMore || !scrollContainerRef.current) return;
+
+    const container = scrollContainerRef.current;
+    const prevScrollHeight = container.scrollHeight;
+    const prevScrollTop = container.scrollTop;
+
+    setIsLoadingMore(true);
+
+    if (direction === 'up' && visibleRange.start > 0) {
+      // Loading older messages - preserve scroll position
+      const newStart = Math.max(0, visibleRange.start - CHUNK_SIZE);
+      
+      setVisibleRange(prev => ({
+        start: newStart,
+        end: Math.min(chatItems.length, prev.end)
+      }));
+
+      // Restore scroll position after DOM updates
+      requestAnimationFrame(() => {
+        if (container) {
+          const newScrollHeight = container.scrollHeight;
+          const heightDiff = newScrollHeight - prevScrollHeight;
+          container.scrollTop = prevScrollTop + heightDiff;
+        }
+        setIsLoadingMore(false);
+      });
+    } else if (direction === 'down' && visibleRange.end < chatItems.length) {
+      // Loading newer messages - no position adjustment needed
+      setVisibleRange(prev => ({
+        start: prev.start,
+        end: Math.min(chatItems.length, prev.end + CHUNK_SIZE)
+      }));
+      
+      setTimeout(() => setIsLoadingMore(false), 50);
+    } else {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, visibleRange, chatItems.length]);
+
+  // Debounced scroll handler
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    const scrollPercentage = scrollTop / (scrollHeight - clientHeight);
-
-    // Load more when near edges
-    if (scrollPercentage < 0.2 && visibleRange.start > 0) {
-      // Scrolling near top - load older messages
-      setIsLoadingMore(true);
-      setTimeout(() => {
-        setVisibleRange(prev => ({
-          start: Math.max(0, prev.start - CHUNK_SIZE),
-          end: Math.min(chatItems.length, prev.end + CHUNK_SIZE)
-        }));
-        setIsLoadingMore(false);
-      }, 100);
-    } else if (scrollPercentage > 0.8 && visibleRange.end < chatItems.length) {
-      // Scrolling near bottom - load newer messages
-      setIsLoadingMore(true);
-      setTimeout(() => {
-        setVisibleRange(prev => ({
-          start: Math.max(0, prev.start),
-          end: Math.min(chatItems.length, prev.end + CHUNK_SIZE)
-        }));
-        setIsLoadingMore(false);
-      }, 100);
+    
+    // Clear existing debounce
+    if (scrollDebounceRef.current) {
+      clearTimeout(scrollDebounceRef.current);
     }
 
-    // Manage memory by limiting total rendered items
-    if (visibleRange.end - visibleRange.start > MAX_RENDERED_ITEMS) {
-      const midpoint = Math.floor((visibleRange.start + visibleRange.end) / 2);
-      const halfMax = Math.floor(MAX_RENDERED_ITEMS / 2);
-      setVisibleRange({
-        start: Math.max(0, midpoint - halfMax),
-        end: Math.min(chatItems.length, midpoint + halfMax)
-      });
+    // Mark as user scrolling
+    isUserScrollingRef.current = true;
+    lastScrollTopRef.current = scrollTop;
+
+    // Debounced scroll handling
+    scrollDebounceRef.current = setTimeout(() => {
+      if (!isLoadingMore) {
+        const scrollPercentage = scrollTop / (scrollHeight - clientHeight);
+        
+        // Load more when near edges
+        if (scrollPercentage < 0.15 && visibleRange.start > 0) {
+          loadMoreContent('up');
+        } else if (scrollPercentage > 0.85 && visibleRange.end < chatItems.length) {
+          loadMoreContent('down');
+        }
+      }
+      
+      isUserScrollingRef.current = false;
+    }, 150);
+  }, [loadMoreContent, isLoadingMore, visibleRange, chatItems.length]);
+
+  // Memory management (separate from scroll events)
+  useEffect(() => {
+    // Only manage memory when not actively loading and not user scrolling
+    if (!isLoadingMore && !isUserScrollingRef.current && 
+        visibleRange.end - visibleRange.start > MAX_RENDERED_ITEMS) {
+      
+      const container = scrollContainerRef.current;
+      if (!container) return;
+
+      const scrollTop = container.scrollTop;
+      const scrollHeight = container.scrollHeight;
+      const clientHeight = container.clientHeight;
+      const scrollPercentage = scrollTop / (scrollHeight - clientHeight);
+      
+      // Calculate new range based on current scroll position
+      const totalItems = visibleRange.end - visibleRange.start;
+      const targetSize = Math.floor(MAX_RENDERED_ITEMS * 0.8); // Use 80% of max for buffer
+      const currentIndex = visibleRange.start + Math.floor(totalItems * scrollPercentage);
+      const halfTarget = Math.floor(targetSize / 2);
+      
+      const newStart = Math.max(0, currentIndex - halfTarget);
+      const newEnd = Math.min(chatItems.length, newStart + targetSize);
+      
+      setVisibleRange({ start: newStart, end: newEnd });
     }
-  }, [visibleRange, chatItems.length]);
+  }, [visibleRange, isLoadingMore, chatItems.length]);
 
   // Jump to specific date
   const jumpToDate = useCallback((date: Date) => {
@@ -251,6 +313,15 @@ export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
       });
     }
   }, [chatItems.length, visibleRange.end]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollDebounceRef.current) {
+        clearTimeout(scrollDebounceRef.current);
+      }
+    };
+  }, []);
 
   if (isLoading) {
     return (
