@@ -284,7 +284,30 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ analytics, mes
           </Tooltip>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 mr-12">
+          {/* Normalization Toggle */}
+          {searchKeyword && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setNormalizeSearch(!normalizeSearch)}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                title={normalizeSearch ? "Show absolute counts" : "Normalize by daily message volume"}
+              >
+                <BarChart3 className="w-4 h-4" />
+                <span className="font-medium">Normalize</span>
+                <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+                  normalizeSearch
+                    ? 'bg-blue-500 border-blue-500'
+                    : 'border-gray-300 dark:border-gray-500'
+                }`}>
+                  {normalizeSearch && (
+                    <Check className="w-2.5 h-2.5 text-white" />
+                  )}
+                </div>
+              </button>
+            </div>
+          )}
+
           {/* Year Navigation */}
           {availableYears.length > 1 && (
             <div className="flex items-center gap-2">
@@ -310,43 +333,6 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ analytics, mes
               </button>
             </div>
           )}
-
-          {/* Normalization Toggle */}
-          {searchKeyword && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setNormalizeSearch(!normalizeSearch)}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                title={normalizeSearch ? "Show absolute counts" : "Normalize by daily message volume"}
-              >
-                <BarChart3 className="w-4 h-4" />
-                <span className="font-medium">Normalize</span>
-                <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
-                  normalizeSearch
-                    ? 'bg-blue-500 border-blue-500'
-                    : 'border-gray-300 dark:border-gray-500'
-                }`}>
-                  {normalizeSearch && (
-                    <Check className="w-2.5 h-2.5 text-white" />
-                  )}
-                </div>
-              </button>
-            </div>
-          )}
-
-          {/* Intensity Legend */}
-          <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-            <span>Less</span>
-            <div className="flex gap-1">
-              {[0, 1, 2, 3, 4].map(intensity => (
-                <div
-                  key={intensity}
-                  className={`w-3 h-3 rounded-sm ${getActivityColor(intensity)}`}
-                />
-              ))}
-            </div>
-            <span>More</span>
-          </div>
         </div>
       </div>
 
@@ -483,6 +469,20 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ analytics, mes
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Intensity Legend */}
+      <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+        <span>Less</span>
+        <div className="flex gap-1">
+          {[0, 1, 2, 3, 4].map(intensity => (
+            <div
+              key={intensity}
+              className={`w-3 h-3 rounded-sm ${getActivityColor(intensity)}`}
+            />
+          ))}
+        </div>
+        <span>More</span>
       </div>
 
       {/* Weekly Activity Pattern Heatmap */}
