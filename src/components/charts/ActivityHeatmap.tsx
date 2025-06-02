@@ -48,7 +48,7 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ analytics, mes
   );
   const [normalizeSearch, setNormalizeSearch] = useState(true);
 
-  const { heatmapData, totalDailyMessages } = useMemo(() => {
+  const { heatmapData, totalDailyMessages, totalHourlyPatterns } = useMemo(() => {
     if (!analytics || !metadata) {
       return {
         heatmapData: {
@@ -62,7 +62,8 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ analytics, mes
           mediaActivity: {},
           responseVelocity: {}
         },
-        totalDailyMessages: {} as Record<string, number>
+        totalDailyMessages: {} as Record<string, number>,
+        totalHourlyPatterns: {} as Record<string, Record<number, number>>
       };
     }
 
@@ -78,10 +79,11 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ analytics, mes
     const activeParticipants: Record<string, string[]> = {};
     const mediaActivity: Record<string, number> = {};
     const hourlyPatterns: Record<string, Record<number, number>> = {}; // day of week -> hour -> count
+    const totalHourlyPatterns: Record<string, Record<number, number>> = {}; // Total hourly patterns for normalization
 
     // Get unfiltered daily totals for normalization from raw analytics
     if (searchKeyword && normalizeSearch && rawAnalytics) {
-      Object.entries(rawAnalytics.timePatterns.dailyActivity).forEach(([sender, dailyData]) => {
+      Object.entries(rawAnalytics.timePatterns.dailyActivity).forEach(([_sender, dailyData]) => {
         Object.entries(dailyData).forEach(([date, count]) => {
           const msgDate = new Date(date);
           const msgYear = getYear(msgDate);
@@ -95,8 +97,10 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ analytics, mes
     // Initialize hourly patterns (7 days x 24 hours)
     for (let day = 0; day < 7; day++) {
       hourlyPatterns[day.toString()] = {};
+      totalHourlyPatterns[day.toString()] = {};
       for (let hour = 0; hour < 24; hour++) {
         hourlyPatterns[day.toString()][hour] = 0;
+        totalHourlyPatterns[day.toString()][hour] = 0;
       }
     }
 
@@ -131,6 +135,22 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ analytics, mes
           hourlyPatterns[dayOfWeek.toString()][hour]++;
         }
       });
+    }
+
+    // Calculate total hourly patterns from raw analytics for normalization
+    if (searchKeyword && normalizeSearch && rawAnalytics) {
+      // Get raw message data from chatStore for total hourly patterns
+      const { rawMessages } = useChatStore.getState();
+      if (rawMessages && rawMessages.length > 0) {
+        rawMessages.forEach(msg => {
+          const msgYear = getYear(msg.datetime);
+          if (msgYear === selectedYear) {
+            const dayOfWeek = getDay(msg.datetime);
+            const hour = msg.datetime.getHours();
+            totalHourlyPatterns[dayOfWeek.toString()][hour]++;
+          }
+        });
+      }
     }
 
     // Media activity from analytics - use messageStats.mediaPerSender
@@ -210,7 +230,8 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ analytics, mes
         peakParticipants: Math.max(...Object.values(activeParticipants).map(p => p.length), 0),
         totalMediaMessages: Math.round(Object.values(mediaActivity).reduce((sum, count) => sum + count, 0))
       },
-      totalDailyMessages
+      totalDailyMessages,
+      totalHourlyPatterns
     };
   }, [selectedYear, metadata, analytics, messages, searchKeyword, normalizeSearch, rawAnalytics]);
 
@@ -487,10 +508,25 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ analytics, mes
 
             {/* Weekly heatmap grid */}
             {dayNames.map((dayName, dayIndex) => {
-              const maxHourlyActivity = Math.max(
-                ...Object.values(heatmapData.hourlyPatterns[dayIndex.toString()] || {}),
-                1
-              );
+              // Calculate max activity for scaling (either normalized or absolute)
+              let maxHourlyActivity = 1;
+              const isNormalized = searchKeyword && normalizeSearch;
+              
+              if (isNormalized && totalHourlyPatterns[dayIndex.toString()]) {
+                // For normalized data, find max percentage across all hours
+                const normalizedValues = Array.from({ length: 24 }, (_, hour) => {
+                  const activity = heatmapData.hourlyPatterns[dayIndex.toString()]?.[hour] || 0;
+                  const total = totalHourlyPatterns[dayIndex.toString()]?.[hour] || 0;
+                  return total > 0 ? (activity / total) * 100 : 0;
+                });
+                maxHourlyActivity = Math.max(...normalizedValues, 1);
+              } else {
+                // For absolute data, use original logic
+                maxHourlyActivity = Math.max(
+                  ...Object.values(heatmapData.hourlyPatterns[dayIndex.toString()] || {}),
+                  1
+                );
+              }
 
               return (
                 <div key={dayName} className="flex items-center mb-1">
@@ -500,12 +536,22 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ analytics, mes
                   <div className="flex gap-1">
                     {Array.from({ length: 24 }, (_, hour) => {
                       const activity = heatmapData.hourlyPatterns[dayIndex.toString()]?.[hour] || 0;
-                      const intensity = maxHourlyActivity > 0 ? Math.ceil((activity / maxHourlyActivity) * 4) : 0;
+                      let tooltipText = `${dayName} ${hour.toString().padStart(2, '0')}:00 - ${activity} messages`;
+                      let intensity;
+
+                      if (isNormalized && totalHourlyPatterns[dayIndex.toString()]?.[hour]) {
+                        const total = totalHourlyPatterns[dayIndex.toString()][hour];
+                        const normalizedValue = (activity / total) * 100;
+                        tooltipText = `${dayName} ${hour.toString().padStart(2, '0')}:00 - ${activity} matches / ${total} total (${normalizedValue.toFixed(1)}%)`;
+                        intensity = normalizedValue > 0 ? Math.max(1, Math.ceil((normalizedValue / maxHourlyActivity) * 4)) : 0;
+                      } else {
+                        intensity = maxHourlyActivity > 0 ? Math.ceil((activity / maxHourlyActivity) * 4) : 0;
+                      }
 
                       return (
                         <Tooltip
                           key={hour}
-                          content={`${dayName} ${hour.toString().padStart(2, '0')}:00 - ${activity} messages`}
+                          content={tooltipText}
                         >
                           <div
                             className={clsx(
