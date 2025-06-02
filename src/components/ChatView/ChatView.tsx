@@ -1,5 +1,4 @@
 import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
-import { FixedSizeList as List, ListChildComponentProps } from 'react-window';
 import { format, startOfDay, isSameDay } from 'date-fns';
 import { useChatStore } from '../../stores/chatStore';
 import { useFilterStore } from '../../stores/filterStore';
@@ -25,39 +24,43 @@ interface ChatItem {
   isLastInGroup?: boolean;
 }
 
-const ITEM_HEIGHT = 80; // Average height for virtual scrolling
-const DATE_SEPARATOR_HEIGHT = 40;
+const CHUNK_SIZE = 150; // Messages per chunk
+const MAX_RENDERED_ITEMS = 500; // Maximum DOM items
 
 export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
   const { rawMessages, isLoading } = useChatStore();
   const { selectedSenders, searchKeyword, messageTypes, dateRange } = useFilterStore();
   const [showDateNavigator, setShowDateNavigator] = useState(false);
   const [autoScroll, setAutoScroll] = useState(true);
-  const listRef = useRef<List>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [containerHeight, setContainerHeight] = useState(600);
-  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Chunking state
+  const [visibleRange, setVisibleRange] = useState({ start: 0, end: CHUNK_SIZE });
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastScrollTopRef = useRef<number>(0);
 
   // Apply client-side filtering (simple version)
   const filteredMessages = useMemo(() => {
     if (!rawMessages) return [];
-    
+
     return rawMessages.filter(message => {
       // Filter by senders
       if (selectedSenders.length > 0 && !selectedSenders.includes(message.sender)) {
         return false;
       }
-      
+
       // Filter by message types (exclude system messages from filtering)
       if (message.type !== 'system' && !messageTypes.includes(message.type as 'text' | 'media' | 'call')) {
         return false;
       }
-      
+
       // Filter by search keyword
       if (searchKeyword && !message.content.toLowerCase().includes(searchKeyword.toLowerCase())) {
         return false;
       }
-      
+
       // Filter by date range
       if (dateRange) {
         const messageDate = message.datetime;
@@ -65,7 +68,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
           return false;
         }
       }
-      
+
       return true;
     });
   }, [rawMessages, selectedSenders, messageTypes, searchKeyword, dateRange]);
@@ -81,7 +84,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
 
     filteredMessages.forEach((message: Message, index: number) => {
       const messageDate = startOfDay(message.datetime);
-      
+
       // Add date separator if day changed
       if (!currentDate || !isSameDay(currentDate, messageDate)) {
         // Mark last message in previous group
@@ -91,7 +94,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
             lastItem.isLastInGroup = true;
           }
         }
-        
+
         items.push({
           type: 'date-separator',
           data: messageDate,
@@ -104,7 +107,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
 
       // Determine if this message should be grouped with previous
       const isGrouped = lastSender === message.sender;
-      const isLastInGroup = index === filteredMessages.length - 1 || 
+      const isLastInGroup = index === filteredMessages.length - 1 ||
                            filteredMessages[index + 1]?.sender !== message.sender ||
                            !isSameDay(message.datetime, filteredMessages[index + 1]?.datetime);
 
@@ -131,35 +134,72 @@ export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
     return items;
   }, [filteredMessages]);
 
-  // Calculate item height based on type
-  const getItemHeight = useCallback((index: number) => {
-    const item = chatItems[index];
-    if (!item) return ITEM_HEIGHT;
-    
-    if (item.type === 'date-separator') {
-      return DATE_SEPARATOR_HEIGHT;
+  // Get currently visible chat items based on range
+  const visibleChatItems = useMemo(() => {
+    const start = Math.max(0, visibleRange.start);
+    const end = Math.min(chatItems.length, visibleRange.end);
+    return chatItems.slice(start, end);
+  }, [chatItems, visibleRange]);
+
+  // Scroll handling for infinite scroll
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    const scrollPercentage = scrollTop / (scrollHeight - clientHeight);
+
+    // Load more when near edges
+    if (scrollPercentage < 0.2 && visibleRange.start > 0) {
+      // Scrolling near top - load older messages
+      setIsLoadingMore(true);
+      setTimeout(() => {
+        setVisibleRange(prev => ({
+          start: Math.max(0, prev.start - CHUNK_SIZE),
+          end: Math.min(chatItems.length, prev.end + CHUNK_SIZE)
+        }));
+        setIsLoadingMore(false);
+      }, 100);
+    } else if (scrollPercentage > 0.8 && visibleRange.end < chatItems.length) {
+      // Scrolling near bottom - load newer messages
+      setIsLoadingMore(true);
+      setTimeout(() => {
+        setVisibleRange(prev => ({
+          start: Math.max(0, prev.start),
+          end: Math.min(chatItems.length, prev.end + CHUNK_SIZE)
+        }));
+        setIsLoadingMore(false);
+      }, 100);
     }
-    
-    // Dynamic height calculation based on message content
-    const message = item.data as Message;
-    const baseHeight = 60;
-    const lineHeight = 20;
-    const estimatedLines = Math.ceil(message.content.length / 50); // Rough estimate
-    const contentHeight = Math.max(1, estimatedLines) * lineHeight;
-    const paddingHeight = item.isGrouped ? 4 : 12;
-    
-    return baseHeight + contentHeight + paddingHeight;
-  }, [chatItems]);
+
+    // Manage memory by limiting total rendered items
+    if (visibleRange.end - visibleRange.start > MAX_RENDERED_ITEMS) {
+      const midpoint = Math.floor((visibleRange.start + visibleRange.end) / 2);
+      const halfMax = Math.floor(MAX_RENDERED_ITEMS / 2);
+      setVisibleRange({
+        start: Math.max(0, midpoint - halfMax),
+        end: Math.min(chatItems.length, midpoint + halfMax)
+      });
+    }
+  }, [visibleRange, chatItems.length]);
 
   // Jump to specific date
   const jumpToDate = useCallback((date: Date) => {
-    const targetIndex = chatItems.findIndex(item => 
-      item.type === 'date-separator' && 
+    const targetIndex = chatItems.findIndex(item =>
+      item.type === 'date-separator' &&
       isSameDay(item.data as Date, date)
     );
-    
-    if (targetIndex >= 0 && listRef.current) {
-      listRef.current.scrollToItem(targetIndex, 'start');
+
+    if (targetIndex >= 0 && scrollContainerRef.current) {
+      // Expand visible range to include target
+      setVisibleRange({
+        start: Math.max(0, targetIndex - CHUNK_SIZE),
+        end: Math.min(chatItems.length, targetIndex + CHUNK_SIZE)
+      });
+
+      // Scroll to target after DOM update
+      setTimeout(() => {
+        const element = scrollContainerRef.current?.querySelector(`[data-index="${targetIndex}"]`);
+        element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
+
       setSelectedDate(date);
       setAutoScroll(false);
     }
@@ -167,8 +207,19 @@ export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
 
   // Jump to latest messages
   const jumpToLatest = useCallback(() => {
-    if (listRef.current && chatItems.length > 0) {
-      listRef.current.scrollToItem(chatItems.length - 1, 'end');
+    if (scrollContainerRef.current && chatItems.length > 0) {
+      setVisibleRange({
+        start: Math.max(0, chatItems.length - CHUNK_SIZE),
+        end: chatItems.length
+      });
+
+      setTimeout(() => {
+        scrollContainerRef.current?.scrollTo({
+          top: scrollContainerRef.current.scrollHeight,
+          behavior: 'smooth'
+        });
+      }, 50);
+
       setAutoScroll(true);
       setSelectedDate(null);
     }
@@ -176,57 +227,30 @@ export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
 
   // Auto-scroll to bottom when new messages arrive (if auto-scroll is enabled)
   useEffect(() => {
-    if (autoScroll && listRef.current && chatItems.length > 0) {
-      listRef.current.scrollToItem(chatItems.length - 1, 'end');
+    if (autoScroll && scrollContainerRef.current && chatItems.length > 0) {
+      setVisibleRange({
+        start: Math.max(0, chatItems.length - CHUNK_SIZE),
+        end: chatItems.length
+      });
+
+      setTimeout(() => {
+        scrollContainerRef.current?.scrollTo({
+          top: scrollContainerRef.current.scrollHeight,
+          behavior: 'auto'
+        });
+      }, 0);
     }
   }, [chatItems.length, autoScroll]);
 
-  // Calculate container height dynamically
+  // Initialize with latest messages
   useEffect(() => {
-    const updateHeight = () => {
-      if (containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        const headerHeight = 60; // Header height
-        const filterHeight = (selectedSenders.length > 0 || dateRange || messageTypes.length < 3 || searchKeyword) ? 50 : 0;
-        const dateNavHeight = showDateNavigator ? 60 : 0;
-        const availableHeight = rect.height - headerHeight - filterHeight - dateNavHeight - 20; // 20px for padding
-        setContainerHeight(Math.max(300, availableHeight));
-      }
-    };
-
-    updateHeight();
-    const timeoutId = setTimeout(updateHeight, 100); // Small delay for layout to settle
-    window.addEventListener('resize', updateHeight);
-    return () => {
-      window.removeEventListener('resize', updateHeight);
-      clearTimeout(timeoutId);
-    };
-  }, [selectedSenders.length, dateRange, messageTypes.length, searchKeyword, showDateNavigator]);
-
-  // Render individual chat item
-  const renderChatItem = useCallback(({ index, style }: ListChildComponentProps) => {
-    const item = chatItems[index];
-    if (!item) return null;
-
-    return (
-      <div style={style}>
-        {item.type === 'date-separator' ? (
-          <DateSeparator date={item.data as Date} />
-        ) : (
-          <MessageBubble
-            message={item.data as Message}
-            isGrouped={item.isGrouped}
-            isLastInGroup={item.isLastInGroup}
-            searchQuery={searchKeyword}
-            className={clsx(
-              'transition-all duration-200',
-              selectedDate && 'opacity-90'
-            )}
-          />
-        )}
-      </div>
-    );
-  }, [chatItems, searchKeyword, selectedDate]);
+    if (chatItems.length > 0 && visibleRange.end === CHUNK_SIZE) {
+      setVisibleRange({
+        start: Math.max(0, chatItems.length - CHUNK_SIZE),
+        end: chatItems.length
+      });
+    }
+  }, [chatItems.length, visibleRange.end]);
 
   if (isLoading) {
     return (
@@ -265,7 +289,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
   }
 
   return (
-    <div ref={containerRef} className={clsx('flex flex-col h-full min-h-0', className)}>
+    <div className={clsx('flex flex-col h-full min-h-0', className)}>
       {/* Header */}
       <div className="flex-shrink-0 flex items-center justify-between p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -277,20 +301,20 @@ export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
           </span>
           {searchKeyword && (
             <div className="hidden sm:block">
-              <SearchHighlight 
-                query={searchKeyword} 
+              <SearchHighlight
+                query={searchKeyword}
                 resultCount={filteredMessages?.length || 0}
               />
             </div>
           )}
         </div>
-        
+
         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           <button
             onClick={() => setShowDateNavigator(!showDateNavigator)}
             className={clsx(
               "p-2 rounded-lg transition-colors touch-manipulation",
-              showDateNavigator 
+              showDateNavigator
                 ? "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
                 : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
             )}
@@ -299,7 +323,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
           >
             <Calendar className="w-4 h-4" />
           </button>
-          
+
           <button
             onClick={jumpToLatest}
             className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors touch-manipulation"
@@ -323,18 +347,48 @@ export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
       )}
 
       {/* Messages List */}
-      <div className="flex-1 relative bg-gray-50 dark:bg-gray-900 min-h-0">
-        <List
-          ref={listRef}
-          height={containerHeight}
-          width="100%"
-          itemCount={chatItems.length}
-          itemSize={ITEM_HEIGHT}
-          className="w-full"
-          overscanCount={5}
-        >
-          {renderChatItem}
-        </List>
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 p-4 scrollbar-hide"
+        onScroll={handleScroll}
+      >
+        {/* Loading indicator for older messages */}
+        {isLoadingMore && visibleRange.start > 0 && (
+          <div className="flex justify-center py-2">
+            <div className="text-sm text-gray-500 dark:text-gray-400">Loading older messages...</div>
+          </div>
+        )}
+
+        {/* Rendered chat items */}
+        {visibleChatItems.map((item, index) => (
+          <div
+            key={`${item.type}-${item.index}`}
+            data-index={visibleRange.start + index}
+            className="transition-all duration-200"
+          >
+            {item.type === 'date-separator' ? (
+              <DateSeparator date={item.data as Date} />
+            ) : (
+              <MessageBubble
+                message={item.data as Message}
+                isGrouped={item.isGrouped}
+                isLastInGroup={item.isLastInGroup}
+                searchQuery={searchKeyword}
+                className={clsx(
+                  'transition-all duration-200',
+                  selectedDate && 'opacity-90'
+                )}
+              />
+            )}
+          </div>
+        ))}
+
+        {/* Loading indicator for newer messages */}
+        {isLoadingMore && visibleRange.end < chatItems.length && (
+          <div className="flex justify-center py-2">
+            <div className="text-sm text-gray-500 dark:text-gray-400">Loading newer messages...</div>
+          </div>
+        )}
       </div>
 
       {/* Filter Summary */}
