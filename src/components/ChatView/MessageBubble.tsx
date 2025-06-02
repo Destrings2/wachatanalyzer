@@ -4,6 +4,7 @@ import { Message } from '../../types';
 import { getSenderColorByName } from '../../utils/senderUtils';
 import { useTheme } from '../../hooks/useTheme';
 import { useChatStore } from '../../stores/chatStore';
+import { parseSearchQuery, findMatchPositions, MatchPosition } from '../../utils/searchParser';
 import { 
   Phone, 
   Video, 
@@ -28,27 +29,85 @@ interface MessageBubbleProps {
 interface MessageContentProps {
   content: string;
   searchQuery?: string;
+  field?: 'content' | 'sender';
 }
 
-// Component to highlight search terms in message content
-const MessageContent: React.FC<MessageContentProps> = ({ content, searchQuery }) => {
+// Helper function to render highlighted text based on match positions
+const renderHighlightedText = (text: string, positions: MatchPosition[]): React.ReactNode[] => {
+  if (positions.length === 0) return [text];
+
+  const result: React.ReactNode[] = [];
+  let lastIndex = 0;
+
+  positions.forEach((pos, index) => {
+    // Add text before the match
+    if (pos.start > lastIndex) {
+      result.push(text.slice(lastIndex, pos.start));
+    }
+
+    // Add highlighted match with different styles based on type
+    const matchText = text.slice(pos.start, pos.end);
+    const highlightClass = clsx(
+      'rounded px-1',
+      pos.type === 'phrase' && 'bg-blue-200 dark:bg-blue-900/50 text-gray-900 dark:text-white',
+      pos.type === 'regex' && 'bg-purple-200 dark:bg-purple-900/50 text-gray-900 dark:text-white',
+      pos.type === 'wildcard' && 'bg-green-200 dark:bg-green-900/50 text-gray-900 dark:text-white',
+      pos.type === 'term' && 'bg-yellow-200 dark:bg-yellow-900/50 text-gray-900 dark:text-white'
+    );
+
+    result.push(
+      <mark key={`highlight-${index}`} className={highlightClass}>
+        {matchText}
+      </mark>
+    );
+
+    lastIndex = pos.end;
+  });
+
+  // Add remaining text after the last match
+  if (lastIndex < text.length) {
+    result.push(text.slice(lastIndex));
+  }
+
+  return result;
+};
+
+// Component to highlight search terms in message content using sophisticated search parser
+const MessageContent: React.FC<MessageContentProps> = ({ content, searchQuery, field = 'content' }) => {
   const highlightedContent = useMemo(() => {
-    if (!searchQuery || !searchQuery.trim()) {
+    if (!searchQuery?.trim()) {
       return content;
     }
 
-    // Simple highlighting - in a real app, you'd integrate with the search parser
-    const regex = new RegExp(`(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    const parts = content.split(regex);
-    
-    return parts.map((part, index) => 
-      regex.test(part) ? (
-        <mark key={index} className="bg-yellow-200 dark:bg-yellow-900/50 text-gray-900 dark:text-white rounded px-1">
-          {part}
-        </mark>
-      ) : part
-    );
-  }, [content, searchQuery]);
+    try {
+      // Parse the search query using the sophisticated parser
+      const parsedQuery = parseSearchQuery(searchQuery);
+      if (!parsedQuery) {
+        return content; // No valid query, return original content
+      }
+
+      // Find match positions using the parser
+      const matchPositions = findMatchPositions(parsedQuery, content, field);
+      
+      // Render highlighted text
+      return renderHighlightedText(content, matchPositions);
+    } catch (error) {
+      console.warn('Error highlighting search matches:', error);
+      
+      // Fallback to simple highlighting for edge cases
+      const escaped = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(${escaped})`, 'gi');
+      const parts = content.split(regex);
+      
+      return parts.map((part, index) => 
+        regex.test(part) ? (
+          <mark key={index} className="bg-yellow-200 dark:bg-yellow-900/50 text-gray-900 dark:text-white rounded px-1">
+            {part}
+          </mark>
+        ) : part
+      );
+    }
+  }, [content, searchQuery, field]);
 
   return <>{highlightedContent}</>;
 };
@@ -209,7 +268,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               className="text-xs font-medium mb-1 px-3"
               style={{ color: senderColor }}
             >
-              {message.sender}
+              <MessageContent content={message.sender} searchQuery={searchQuery} field="sender" />
             </div>
           )}
           

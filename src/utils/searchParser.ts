@@ -503,3 +503,118 @@ export function getSearchSuggestions(input: string): string[] {
     suggestion.toLowerCase().includes(lowercaseInput)
   );
 }
+
+// Utility functions for highlighting search matches
+export interface MatchPosition {
+  start: number;
+  end: number;
+  term: string;
+  type: 'term' | 'phrase' | 'regex' | 'wildcard';
+}
+
+/**
+ * Extract highlightable terms from a parsed query for a specific field
+ */
+export function extractHighlightTerms(query: SearchQuery, field: 'content' | 'sender' = 'content'): string[] {
+  const terms: string[] = [];
+  
+  function extract(q: SearchQuery): void {
+    if (q.negated) return; // Don't highlight negated terms
+    
+    switch (q.type) {
+      case 'term':
+      case 'phrase':
+        if (q.value) terms.push(q.value);
+        break;
+      
+      case 'field':
+        // Only include if field matches or no field specified
+        if (q.field === field || !q.field) {
+          if (q.value) terms.push(q.value);
+        }
+        break;
+      
+      case 'wildcard':
+        if (q.value) {
+          // Convert wildcard to regex for highlighting
+          const regexPattern = q.value
+            .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            .replace(/\\\*/g, '.*')
+            .replace(/\\\?/g, '.');
+          terms.push(regexPattern);
+        }
+        break;
+      
+      case 'regex':
+        if (q.value) terms.push(q.value);
+        break;
+      
+      case 'boolean':
+        if (q.children) {
+          q.children.forEach(extract);
+        }
+        break;
+    }
+  }
+  
+  extract(query);
+  return terms;
+}
+
+/**
+ * Find match positions in text for highlighting
+ */
+export function findMatchPositions(query: SearchQuery, text: string, field: 'content' | 'sender' = 'content'): MatchPosition[] {
+  const terms = extractHighlightTerms(query, field);
+  const positions: MatchPosition[] = [];
+  
+  for (const term of terms) {
+    try {
+      // Determine if this is a regex pattern or simple term
+      const isRegex = term.includes('.*') || term.includes('.') || query.type === 'regex';
+      const flags = 'gi'; // Case insensitive, global
+      
+      let regex: RegExp;
+      if (isRegex) {
+        regex = new RegExp(term, flags);
+      } else {
+        // Escape special regex characters for literal matching
+        const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        regex = new RegExp(`\\b${escaped}\\b`, flags);
+      }
+      
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        positions.push({
+          start: match.index,
+          end: match.index + match[0].length,
+          term: match[0],
+          type: isRegex ? (query.type === 'wildcard' ? 'wildcard' : 'regex') : 
+                query.type === 'phrase' ? 'phrase' : 'term'
+        });
+        
+        // Prevent infinite loop for zero-length matches
+        if (match.index === regex.lastIndex) {
+          regex.lastIndex++;
+        }
+      }
+    } catch (error) {
+      // Skip invalid regex patterns
+      console.warn('Invalid search pattern:', term, error);
+    }
+  }
+  
+  // Sort positions by start index and merge overlapping
+  positions.sort((a, b) => a.start - b.start);
+  
+  // Remove overlaps (keep first match when overlapping)
+  const merged: MatchPosition[] = [];
+  for (const pos of positions) {
+    const lastMerged = merged[merged.length - 1];
+    if (!lastMerged || pos.start >= lastMerged.end) {
+      merged.push(pos);
+    }
+  }
+  
+  return merged;
+}

@@ -244,7 +244,7 @@ export const Dashboard: React.FC = () => {
                     </div>
                   }
                 >
-                  <ChatView />
+                  <ChatView messages={filteredMessages || rawMessages} />
                 </Suspense>
               </div>
             ) : (

@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
-import { format, startOfDay, isSameDay } from 'date-fns';
+import { startOfDay, isSameDay } from 'date-fns';
 import { useChatStore } from '../../stores/chatStore';
 import { useFilterStore } from '../../stores/filterStore';
 import { MessageBubble } from './MessageBubble';
@@ -9,11 +9,12 @@ import { SearchHighlight } from './SearchHighlight';
 import { EmptyState } from '../ui/EmptyState';
 import { Skeleton } from '../ui/Skeleton';
 import { Message } from '../../types';
-import { Search, Calendar, ArrowUp, Settings } from 'lucide-react';
+import {Search, Calendar, Settings, ArrowDown} from 'lucide-react';
 import clsx from 'clsx';
 
 interface ChatViewProps {
   className?: string;
+  messages: Message[];
 }
 
 interface ChatItem {
@@ -27,9 +28,9 @@ interface ChatItem {
 const CHUNK_SIZE = 150; // Messages per chunk
 const MAX_RENDERED_ITEMS = 500; // Maximum DOM items
 
-export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
-  const { rawMessages, isLoading } = useChatStore();
-  const { selectedSenders, searchKeyword, messageTypes, dateRange } = useFilterStore();
+export const ChatView: React.FC<ChatViewProps> = ({ className, messages }) => {
+  const { isLoading } = useChatStore();
+  const { searchKeyword } = useFilterStore();
   const [showDateNavigator, setShowDateNavigator] = useState(false);
   const [autoScroll, setAutoScroll] = useState(true);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -39,42 +40,13 @@ export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
   const [visibleRange, setVisibleRange] = useState({ start: 0, end: CHUNK_SIZE });
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const lastScrollTopRef = useRef<number>(0);
-  
+
   // Enhanced scroll management refs
   const scrollDebounceRef = useRef<number | null>(null);
   const isUserScrollingRef = useRef(false);
 
-  // Apply client-side filtering (simple version)
-  const filteredMessages = useMemo(() => {
-    if (!rawMessages) return [];
-
-    return rawMessages.filter(message => {
-      // Filter by senders
-      if (selectedSenders.length > 0 && !selectedSenders.includes(message.sender)) {
-        return false;
-      }
-
-      // Filter by message types (exclude system messages from filtering)
-      if (message.type !== 'system' && !messageTypes.includes(message.type as 'text' | 'media' | 'call')) {
-        return false;
-      }
-
-      // Filter by search keyword
-      if (searchKeyword && !message.content.toLowerCase().includes(searchKeyword.toLowerCase())) {
-        return false;
-      }
-
-      // Filter by date range
-      if (dateRange) {
-        const messageDate = message.datetime;
-        if (messageDate < dateRange[0] || messageDate > dateRange[1]) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [rawMessages, selectedSenders, messageTypes, searchKeyword, dateRange]);
+  // Use messages directly from props (already filtered by Dashboard)
+  const filteredMessages = messages;
 
   // Process messages for chat display with date separators and grouping
   const chatItems = useMemo(() => {
@@ -157,7 +129,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
     if (direction === 'up' && visibleRange.start > 0) {
       // Loading older messages - preserve scroll position
       const newStart = Math.max(0, visibleRange.start - CHUNK_SIZE);
-      
+
       setVisibleRange(prev => ({
         start: newStart,
         end: Math.min(chatItems.length, prev.end)
@@ -178,7 +150,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
         start: prev.start,
         end: Math.min(chatItems.length, prev.end + CHUNK_SIZE)
       }));
-      
+
       setTimeout(() => setIsLoadingMore(false), 50);
     } else {
       setIsLoadingMore(false);
@@ -188,7 +160,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
   // Debounced scroll handler
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    
+
     // Clear existing debounce
     if (scrollDebounceRef.current) {
       clearTimeout(scrollDebounceRef.current);
@@ -202,7 +174,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
     scrollDebounceRef.current = setTimeout(() => {
       if (!isLoadingMore) {
         const scrollPercentage = scrollTop / (scrollHeight - clientHeight);
-        
+
         // Load more when near edges
         if (scrollPercentage < 0.15 && visibleRange.start > 0) {
           loadMoreContent('up');
@@ -210,7 +182,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
           loadMoreContent('down');
         }
       }
-      
+
       isUserScrollingRef.current = false;
     }, 150);
   }, [loadMoreContent, isLoadingMore, visibleRange, chatItems.length]);
@@ -218,9 +190,9 @@ export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
   // Memory management (separate from scroll events)
   useEffect(() => {
     // Only manage memory when not actively loading and not user scrolling
-    if (!isLoadingMore && !isUserScrollingRef.current && 
+    if (!isLoadingMore && !isUserScrollingRef.current &&
         visibleRange.end - visibleRange.start > MAX_RENDERED_ITEMS) {
-      
+
       const container = scrollContainerRef.current;
       if (!container) return;
 
@@ -228,16 +200,16 @@ export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
       const scrollHeight = container.scrollHeight;
       const clientHeight = container.clientHeight;
       const scrollPercentage = scrollTop / (scrollHeight - clientHeight);
-      
+
       // Calculate new range based on current scroll position
       const totalItems = visibleRange.end - visibleRange.start;
       const targetSize = Math.floor(MAX_RENDERED_ITEMS * 0.8); // Use 80% of max for buffer
       const currentIndex = visibleRange.start + Math.floor(totalItems * scrollPercentage);
       const halfTarget = Math.floor(targetSize / 2);
-      
+
       const newStart = Math.max(0, currentIndex - halfTarget);
       const newEnd = Math.min(chatItems.length, newStart + targetSize);
-      
+
       setVisibleRange({ start: newStart, end: newEnd });
     }
   }, [visibleRange, isLoadingMore, chatItems.length]);
@@ -335,7 +307,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
     );
   }
 
-  if (!rawMessages || rawMessages.length === 0) {
+  if (!messages || messages.length === 0) {
     return (
       <div className={clsx('flex flex-col h-full', className)}>
         <EmptyState
@@ -370,14 +342,6 @@ export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
           <span className="flex-shrink-0 px-2 py-1 text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full">
             {filteredMessages?.length || 0}
           </span>
-          {searchKeyword && (
-            <div className="hidden sm:block">
-              <SearchHighlight
-                query={searchKeyword}
-                resultCount={filteredMessages?.length || 0}
-              />
-            </div>
-          )}
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
@@ -400,22 +364,11 @@ export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
             className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors touch-manipulation"
             title="Jump to latest"
           >
-            <ArrowUp className="w-4 h-4" />
+            <ArrowDown className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Date Navigator */}
-      {showDateNavigator && (
-        <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
-          <DateNavigator
-            messages={filteredMessages || []}
-            onDateSelect={jumpToDate}
-            onClose={() => setShowDateNavigator(false)}
-            selectedDate={selectedDate}
-          />
-        </div>
-      )}
 
       {/* Messages List */}
       <div
@@ -462,31 +415,29 @@ export const ChatView: React.FC<ChatViewProps> = ({ className }) => {
         )}
       </div>
 
-      {/* Filter Summary */}
-      {(selectedSenders.length > 0 || dateRange || messageTypes.length < 3 || searchKeyword) && (
+      {/* Search Summary - Only show when search is active */}
+      {searchKeyword && (
         <div className="flex-shrink-0 px-3 sm:px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-t border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2 text-sm text-blue-800 dark:text-blue-200 flex-wrap">
             <div className="flex items-center gap-2">
               <Settings className="w-4 h-4 flex-shrink-0" />
-              <span className="text-xs sm:text-sm">Filters active</span>
+              <span className="text-xs sm:text-sm">Search active</span>
             </div>
-            {selectedSenders.length > 0 && (
-              <span className="px-2 py-1 bg-blue-200 dark:bg-blue-800 rounded text-xs flex-shrink-0">
-                {selectedSenders.length} sender{selectedSenders.length !== 1 ? 's' : ''}
-              </span>
-            )}
-            {messageTypes.length < 3 && (
-              <span className="px-2 py-1 bg-blue-200 dark:bg-blue-800 rounded text-xs flex-shrink-0">
-                {messageTypes.join(', ')}
-              </span>
-            )}
-            {searchKeyword && (
-              <span className="px-2 py-1 bg-blue-200 dark:bg-blue-800 rounded text-xs truncate max-w-xs">
-                Search: "{searchKeyword}"
-              </span>
-            )}
+            <span className="px-2 py-1 bg-blue-200 dark:bg-blue-800 rounded text-xs truncate max-w-xs">
+              {searchKeyword}
+            </span>
           </div>
         </div>
+      )}
+
+      {/* Date Navigator Modal */}
+      {showDateNavigator && (
+        <DateNavigator
+          messages={filteredMessages || []}
+          onDateSelect={jumpToDate}
+          onClose={() => setShowDateNavigator(false)}
+          selectedDate={selectedDate}
+        />
       )}
     </div>
   );
