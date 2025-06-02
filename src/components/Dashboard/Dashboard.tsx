@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { useChatStore } from '../../stores/chatStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useFilterStore } from '../../stores/filterStore';
@@ -6,15 +6,18 @@ import { StatsOverview } from './StatsOverview';
 import { FilterBar } from './FilterBar';
 import { ChartContainer } from './ChartContainer';
 import { ProcessedAnalytics, Message } from '../../types';
-import { Moon, Sun, Menu, X } from 'lucide-react';
+import { Moon, Sun, Menu, X, Loader2 } from 'lucide-react';
 import { DashboardSkeleton } from '../ui/Skeleton';
 import clsx from 'clsx';
+
+// Lazy load ChatView
+const ChatView = lazy(() => import('../ChatView/ChatView').then(m => ({ default: m.ChatView })));
 
 export const Dashboard: React.FC = () => {
   const { analytics, metadata, participants, rawMessages, rawCalls } = useChatStore();
   const { theme, toggleTheme, sidebarCollapsed, toggleSidebar } = useUIStore();
   const { selectedSenders, searchKeyword, messageTypes, dateRange, filterAndAnalyze, isFiltering, initializeIndices } = useFilterStore();
-  
+
   const [selectedChart, setSelectedChart] = useState('timeline');
   const [filteredAnalytics, setFilteredAnalytics] = useState<ProcessedAnalytics | null>(null);
   const [filteredMessages, setFilteredMessages] = useState<Message[] | null>(null);
@@ -25,6 +28,7 @@ export const Dashboard: React.FC = () => {
     { id: 'radial', name: 'Activity Clock', icon: '🕐' },
     { id: 'calls', name: 'Call Analysis', icon: '📞' },
     { id: 'heatmap', name: 'Activity Heatmap', icon: '🔥' },
+    { id: 'messages', name: 'Chat Messages', icon: '💬' },
     { id: 'emoji', name: 'Emoji Analysis', icon: '😊' },
     { id: 'wordcloud', name: 'Word Cloud', icon: '💬' },
     { id: 'response', name: 'Response Patterns', icon: '↩️' },
@@ -45,7 +49,7 @@ export const Dashboard: React.FC = () => {
         participants: participants || [],
         metadata
       };
-      
+
       initializeIndices(originalChat)
         .then(() => {
           setIndicesInitialized(true);
@@ -60,14 +64,14 @@ export const Dashboard: React.FC = () => {
       setFilteredAnalytics(null);
       return;
     }
-    
+
     const originalChat = {
       messages: rawMessages,
       calls: rawCalls || [],
       participants: participants || [],
       metadata
     };
-    
+
     // Always apply filters using worker for consistency
     filterAndAnalyze(originalChat)
       .then((result) => {
@@ -85,23 +89,23 @@ export const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex lg:flex-row flex-col">
+    <div className="h-screen bg-gray-50 dark:bg-gray-900 flex lg:flex-row flex-col">
       {/* Skip to content link for screen readers */}
-      <a 
-        href="#main-content" 
+      <a
+        href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-blue-600 text-white px-4 py-2 rounded-lg z-50 focus:outline-none focus:ring-2 focus:ring-blue-300"
       >
         Skip to main content
       </a>
-      
+
       {/* Mobile Sidebar Overlay */}
       {!sidebarCollapsed && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={toggleSidebar}
         />
       )}
-      
+
       {/* Sidebar */}
       <aside className={clsx(
         'bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-300',
@@ -109,7 +113,7 @@ export const Dashboard: React.FC = () => {
         // Desktop behavior
         'lg:flex lg:flex-col',
         sidebarCollapsed ? 'lg:w-16' : 'lg:w-64',
-        // Mobile behavior  
+        // Mobile behavior
         'fixed top-0 left-0 h-full z-50 lg:z-auto',
         sidebarCollapsed ? '-translate-x-full lg:translate-x-0' : 'translate-x-0 w-64'
       )}>
@@ -178,7 +182,7 @@ export const Dashboard: React.FC = () => {
                 >
                   <Menu className="w-5 h-5" />
                 </button>
-                
+
                 <div className="min-w-0">
                   {/* Breadcrumb */}
                   <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mb-1">
@@ -188,7 +192,7 @@ export const Dashboard: React.FC = () => {
                       {chartTypes.find(chart => chart.id === selectedChart)?.name || 'Timeline'}
                     </span>
                   </div>
-                  
+
                   <h2 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white truncate">
                     {metadata.chatType === 'individual' ? 'Chat Analysis' : 'Group Chat Analysis'}
                   </h2>
@@ -198,7 +202,7 @@ export const Dashboard: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             <button
               onClick={toggleTheme}
               className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors touch-manipulation flex-shrink-0"
@@ -217,21 +221,40 @@ export const Dashboard: React.FC = () => {
         <main id="main-content" className="flex-1 overflow-y-auto">
           <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
             {/* Filter Bar */}
-            <FilterBar 
+            <FilterBar
               participants={participants}
               dateRange={[metadata.dateRange.start, metadata.dateRange.end]}
             />
 
             {/* Stats Overview */}
-            <StatsOverview analytics={filteredAnalytics || analytics} metadata={metadata} />
+            {selectedChart !== 'messages' && (
+              <StatsOverview analytics={filteredAnalytics || analytics} metadata={metadata}/>
+            )}
 
-            {/* Chart */}
-            <ChartContainer 
-              chartType={selectedChart}
-              analytics={filteredAnalytics || analytics}
-              messages={filteredMessages || rawMessages}
-              isLoading={isFiltering}
-            />
+            {/* Chart or ChatView */}
+            {selectedChart === 'messages' ? (
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden" style={{ height: 'calc(100vh - 300px)' }}>
+                <Suspense
+                  fallback={
+                    <div className="flex items-center justify-center h-64 lg:h-96 bg-gray-50 dark:bg-gray-700/50">
+                      <div className="flex flex-col items-center gap-3 text-gray-500 dark:text-gray-400">
+                        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                        <span className="text-sm font-medium">Loading chat...</span>
+                      </div>
+                    </div>
+                  }
+                >
+                  <ChatView />
+                </Suspense>
+              </div>
+            ) : (
+              <ChartContainer
+                chartType={selectedChart}
+                analytics={filteredAnalytics || analytics}
+                messages={filteredMessages || rawMessages}
+                isLoading={isFiltering}
+              />
+            )}
           </div>
         </main>
       </div>

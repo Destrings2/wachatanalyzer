@@ -2,7 +2,6 @@ import React, { Suspense, lazy, useState } from 'react';
 import { ProcessedAnalytics, Message } from '../../types';
 import { Loader2, Settings, Check } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
-import { ChartSkeleton } from '../ui/Skeleton';
 import { NoDataState, ErrorState } from '../ui/EmptyState';
 
 // Lazy load chart components
@@ -28,18 +27,18 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
 }) => {
   const [showSettings, setShowSettings] = useState(false);
   const { chartSettings, updateChartSettings } = useUIStore();
-  
+
   const renderChart = () => {
     // Handle error state
     if (error) {
       return <ErrorState error={error} />;
     }
-    
+
     // Handle no data state
     if (!analytics || !messages || messages.length === 0) {
       return <NoDataState />;
     }
-    
+
     switch (chartType) {
       case 'timeline':
         return <ActivityTimeline analytics={analytics} settings={chartSettings} />;
@@ -106,12 +105,12 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
           >
             <Settings className="w-5 h-5" />
           </button>
-          
+
           {/* Settings Dropdown */}
           {showSettings && (
             <div className="absolute right-0 top-full mt-2 w-64 sm:w-72 bg-white dark:bg-gray-700 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 p-4 z-20 max-w-[calc(100vw-2rem)]">
               <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">Chart Settings</h3>
-              
+
               <div className="space-y-3">
                 {/* Separate Messages by Sender */}
                 <label className="flex items-center justify-between cursor-pointer">
@@ -126,8 +125,8 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
                       className="sr-only"
                     />
                     <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                      chartSettings.separateMessagesBySender 
-                        ? 'bg-blue-500 border-blue-500' 
+                      chartSettings.separateMessagesBySender
+                        ? 'bg-blue-500 border-blue-500'
                         : 'border-gray-300 dark:border-gray-500'
                     }`}>
                       {chartSettings.separateMessagesBySender && (
@@ -150,8 +149,8 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
                       className="sr-only"
                     />
                     <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                      chartSettings.showMessageCount 
-                        ? 'bg-blue-500 border-blue-500' 
+                      chartSettings.showMessageCount
+                        ? 'bg-blue-500 border-blue-500'
                         : 'border-gray-300 dark:border-gray-500'
                     }`}>
                       {chartSettings.showMessageCount && (
@@ -174,8 +173,8 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
                       className="sr-only"
                     />
                     <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                      chartSettings.enableAnimations 
-                        ? 'bg-blue-500 border-blue-500' 
+                      chartSettings.enableAnimations
+                        ? 'bg-blue-500 border-blue-500'
                         : 'border-gray-300 dark:border-gray-500'
                     }`}>
                       {chartSettings.enableAnimations && (

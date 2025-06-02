@@ -15,7 +15,7 @@ interface UIStore {
   selectedChart: string | null;
   sidebarCollapsed: boolean;
   chartSettings: ChartSettings;
-  
+
   // Actions
   toggleTheme: () => void;
   setTheme: (theme: Theme) => void;
@@ -32,37 +32,37 @@ export const useUIStore = create<UIStore>()(
       theme: 'light',
       activeView: 'upload',
       selectedChart: null,
-      sidebarCollapsed: false,
+      sidebarCollapsed: true,
       chartSettings: {
         separateMessagesBySender: false,
         showMessageCount: true,
         enableAnimations: true,
       },
-      
+
       // Actions
-      toggleTheme: () => set((state) => ({ 
-        theme: state.theme === 'light' ? 'dark' : 'light' 
+      toggleTheme: () => set((state) => ({
+        theme: state.theme === 'light' ? 'dark' : 'light'
       })),
-      
+
       setTheme: (theme) => set({ theme }),
-      
+
       setActiveView: (view) => set({ activeView: view }),
-      
+
       setSelectedChart: (chart) => set({ selectedChart: chart }),
-      
-      toggleSidebar: () => set((state) => ({ 
-        sidebarCollapsed: !state.sidebarCollapsed 
+
+      toggleSidebar: () => set((state) => ({
+        sidebarCollapsed: !state.sidebarCollapsed
       })),
-      
+
       updateChartSettings: (settings) => set((state) => ({
         chartSettings: { ...state.chartSettings, ...settings }
       })),
     }),
     {
       name: 'chatanalyzer-ui',
-      partialize: (state) => ({ 
+      partialize: (state) => ({
         theme: state.theme,
-        chartSettings: state.chartSettings 
+        chartSettings: state.chartSettings
       }),
     }
   )
