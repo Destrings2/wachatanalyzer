@@ -102,8 +102,9 @@ export const Dashboard: React.FC = () => {
       {/* Mobile Sidebar Overlay */}
       {!sidebarCollapsed && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden min-h-screen"
           onClick={toggleSidebar}
+          style={{ minHeight: '100dvh' }}
         />
       )}
 
@@ -115,9 +116,10 @@ export const Dashboard: React.FC = () => {
         'lg:flex lg:flex-col lg:h-full',
         sidebarCollapsed ? 'lg:w-16' : 'lg:w-64',
         // Mobile behavior
-        'fixed top-0 left-0 h-dvh z-50 lg:z-auto',
+        'fixed top-0 left-0 min-h-screen h-dvh z-50 lg:z-auto',
         sidebarCollapsed ? '-translate-x-full lg:translate-x-0' : 'translate-x-0 w-64'
-      )}>
+      )}
+      style={{ height: '100dvh', minHeight: '100vh' }}>
         <div className="p-4 flex-1 overflow-y-auto">
           <div className="flex items-center justify-between mb-8">
             <h1 className={clsx(
