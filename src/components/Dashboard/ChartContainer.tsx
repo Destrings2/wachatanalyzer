@@ -11,6 +11,7 @@ const CallAnalysis = lazy(() => import('../charts/CallAnalysis').then(m => ({ de
 const ActivityHeatmap = lazy(() => import('../charts/ActivityHeatmap').then(m => ({ default: m.ActivityHeatmap })));
 const EmojiAnalysis = lazy(() => import('../charts/EmojiAnalysis').then(m => ({ default: m.EmojiAnalysis })));
 const WordCloud = lazy(() => import('../charts/WordCloud').then(m => ({ default: m.WordCloud })));
+const ResponsePatterns = lazy(() => import('../charts/ResponsePatterns').then(m => ({ default: m.ResponsePatterns })));
 
 interface ChartContainerProps {
   chartType: string;
@@ -54,15 +55,7 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
       case 'wordcloud':
         return <WordCloud analytics={analytics} messages={messages} />;
       case 'response':
-        return (
-          <div className="flex items-center justify-center h-64 lg:h-96">
-            <div className="text-center">
-              <div className="text-4xl mb-4">↩️</div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Response Patterns</h3>
-              <p className="text-gray-600 dark:text-gray-400">Coming Soon</p>
-            </div>
-          </div>
-        );
+        return <ResponsePatterns analytics={analytics} messages={messages} isLoading={isLoading} />;
       case 'network':
         return (
           <div className="flex items-center justify-center h-64 lg:h-96">

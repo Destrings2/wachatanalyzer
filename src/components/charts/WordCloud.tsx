@@ -311,7 +311,10 @@ export const WordCloud: React.FC<WordCloudProps> = ({ analytics, messages = [] }
     const height = isMobile ? 400 : isTablet ? 500 : 600;
     const wordLimit = isMobile ? 25 : isTablet ? 35 : 50;
     
-    const words = analytics.wordFrequency.topWords.slice(0, wordLimit);
+    // Use enhanced word data from filtered messages instead of analytics
+    const words = Object.values(enhancedWordData.wordStats)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, wordLimit);
 
     svg.selectAll('*').remove();
 
@@ -503,7 +506,7 @@ export const WordCloud: React.FC<WordCloudProps> = ({ analytics, messages = [] }
       .delay((d, i) => i * 50)
       .style('opacity', 0.8);
 
-  }, [analytics.wordFrequency, isDark, shouldRender]); // Re-render when data changes or switching to cloud view
+  }, [enhancedWordData.wordStats, isDark, shouldRender]); // Re-render when filtered data changes or switching to cloud view
 
   // Render frequency bar chart
   const renderFrequencyChart = useD3((svg) => {
