@@ -32,7 +32,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
   const [showSearchHelp, setShowSearchHelp] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searchValidation, setSearchValidation] = useState<{ valid: boolean; error?: string }>({ valid: true });
-  
+
   const searchInputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
@@ -44,13 +44,12 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
 
   const hasActiveFilters = selectedSenders.length > 0 || searchKeyword || messageTypes.length < 3 || filterDateRange !== null;
   const suggestions = getSearchSuggestions(searchInput);
-  
+
   // Quick filter shortcuts
   const quickFilters = [
     { id: 'today', label: 'Today', icon: '📅' },
     { id: 'week', label: 'This Week', icon: '📊' },
     { id: 'month', label: 'This Month', icon: '🗓️' },
-    { id: 'media', label: 'Media Only', icon: '📷' },
   ];
 
   // Validate search query on input change
@@ -88,7 +87,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchInput(value);
-    
+
     if (value.length > 0 && suggestions.length > 0) {
       setShowSuggestions(true);
     } else {
@@ -111,7 +110,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
   const handleQuickFilter = (filterId: string) => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
+
     switch (filterId) {
       case 'today': {
         setDateRange([today, new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)]);
@@ -125,18 +124,6 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
       case 'month': {
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
         setDateRange([monthStart, now]);
-        break;
-      }
-      case 'media': {
-        // Filter to only media messages
-        if (messageTypes.includes('media')) {
-          toggleMessageType('text');
-          toggleMessageType('call');
-        } else {
-          if (!messageTypes.includes('media')) toggleMessageType('media');
-          if (messageTypes.includes('text')) toggleMessageType('text');
-          if (messageTypes.includes('call')) toggleMessageType('call');
-        }
         break;
       }
     }
@@ -160,7 +147,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
           </button>
         ))}
       </div>
-      
+
       <div className="flex flex-col lg:flex-row lg:flex-wrap lg:items-center gap-4">
         {/* Search Input */}
         <div className="flex-1 min-w-0 lg:min-w-[200px]">
@@ -181,7 +168,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
                   : "border-red-300 dark:border-red-600 focus:ring-red-500"
               )}
             />
-            
+
             {/* Search validation indicator */}
             <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
               {searchInput && (
@@ -194,7 +181,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
                 )
               )}
             </div>
-            
+
             {/* Help button */}
             <button
               onClick={() => setShowSearchHelp(!showSearchHelp)}
@@ -203,10 +190,10 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
             >
               <HelpCircle className="w-4 h-4" />
             </button>
-            
+
             {/* Search suggestions */}
             {showSuggestions && suggestions.length > 0 && (
-              <div 
+              <div
                 ref={suggestionsRef}
                 className="absolute top-full mt-1 left-0 right-0 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-20 max-h-48 overflow-y-auto"
               >
@@ -224,7 +211,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
                 </div>
               </div>
             )}
-            
+
             {/* Search validation error */}
             {!searchValidation.valid && searchValidation.error && (
               <div className="absolute top-full mt-1 left-0 right-0 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2 z-20">
@@ -384,7 +371,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <div className="space-y-4 text-sm">
               <div>
                 <h4 className="font-medium text-gray-900 dark:text-white mb-2">Basic Search</h4>
@@ -393,7 +380,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
                   <div><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">"hello world"</code> - Find exact phrase "hello world"</div>
                 </div>
               </div>
-              
+
               <div>
                 <h4 className="font-medium text-gray-900 dark:text-white mb-2">Boolean Operators</h4>
                 <div className="space-y-1 text-gray-600 dark:text-gray-400">
@@ -403,7 +390,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
                   <div><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">(john OR mary) AND meeting</code> - Grouping with parentheses</div>
                 </div>
               </div>
-              
+
               <div>
                 <h4 className="font-medium text-gray-900 dark:text-white mb-2">Field Search</h4>
                 <div className="space-y-1 text-gray-600 dark:text-gray-400">
@@ -412,7 +399,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
                   <div><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">type:media</code> - Media messages only</div>
                 </div>
               </div>
-              
+
               <div>
                 <h4 className="font-medium text-gray-900 dark:text-white mb-2">Wildcards and Patterns</h4>
                 <div className="space-y-1 text-gray-600 dark:text-gray-400">
@@ -421,7 +408,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
                   <div><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">/\d{3}-\d{3}-\d{4}/</code> - Regular expression patterns</div>
                 </div>
               </div>
-              
+
               <div>
                 <h4 className="font-medium text-gray-900 dark:text-white mb-2">Examples</h4>
                 <div className="space-y-1 text-gray-600 dark:text-gray-400">
@@ -434,7 +421,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
           </div>
         </div>
       )}
-      
+
       {/* Click outside to close dropdowns */}
       {(showSenderDropdown || showTypeDropdown || showDatePicker) && (
         <div

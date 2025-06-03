@@ -16,6 +16,7 @@
     "@tailwindcss/vite": "^4.1.8",
     "@tanstack/react-virtual": "^3.13.9",
     "@types/react-window": "^1.8.8",
+    "@types/sentiment": "^5.0.4",
     "@types/stopword": "^2.0.3",
     "clsx": "^2.1.1",
     "d3": "^7.9.0",
@@ -25,6 +26,7 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-window": "^1.8.11",
+    "sentiment": "^5.0.2",
     "stopword": "^3.1.4",
     "zustand": "^5.0.5"
   },

@@ -13,6 +13,10 @@ export default {
     'dark:text-blue-400', 'dark:text-green-400', 'dark:text-purple-400', 'dark:text-orange-400',
     'text-blue-900', 'text-green-900', 'text-purple-900', 'text-orange-900',
     'dark:text-blue-100', 'dark:text-green-100', 'dark:text-purple-100', 'dark:text-orange-100',
+    // Emoji sentiment colors
+    'bg-red-500', 'bg-green-500', 'bg-gray-500',
+    'text-red-600', 'text-gray-600',
+    'dark:text-red-400', 'dark:text-gray-400',
   ],
   theme: {
     extend: {

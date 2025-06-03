@@ -199,20 +199,46 @@ export function analyzeTimePatterns(chat: ParsedChat): TimePatterns {
   };
 }
 
+// Helper function to normalize emojis by removing skin tone modifiers
+function normalizeEmoji(emoji: string): string {
+  // Remove skin tone modifiers but preserve the structure of ZWJ sequences
+  let normalized = emoji.replace(/[\u{1F3FB}-\u{1F3FF}]/gu, '');
+  
+  // Clean up any double ZWJ sequences that might result from modifier removal
+  normalized = normalized.replace(/\u200D\u200D+/g, '\u200D');
+  
+  // Remove any trailing or leading ZWJ sequences
+  normalized = normalized.replace(/^\u200D+|\u200D+$/g, '');
+  
+  // If we ended up with just modifier characters, gender symbols, or ZWJ, filter it out
+  if (/^[\u200D\u2640\u2642\uFE0F\u20E3]+$/.test(normalized) || normalized.length === 0) {
+    return emoji; // Return original if normalization breaks it
+  }
+  
+  return normalized;
+}
+
 export function analyzeEmojis(chat: ParsedChat): EmojiAnalysis {
   const emojiFrequency: Record<string, number> = {};
   const emojisPerSender: Record<string, Record<string, number>> = {};
+  const rawEmojiFrequency: Record<string, number> = {}; // Track original emojis with skin tones
   let totalEmojis = 0;
   
   for (const msg of chat.messages) {
     if (msg.metadata.emojis) {
       for (const emoji of msg.metadata.emojis) {
-        emojiFrequency[emoji] = (emojiFrequency[emoji] || 0) + 1;
+        // Track raw emoji for accurate unique count
+        rawEmojiFrequency[emoji] = (rawEmojiFrequency[emoji] || 0) + 1;
+        
+        // Normalize emoji for grouping
+        const normalizedEmoji = normalizeEmoji(emoji);
+        emojiFrequency[normalizedEmoji] = (emojiFrequency[normalizedEmoji] || 0) + 1;
         
         if (!emojisPerSender[msg.sender]) {
           emojisPerSender[msg.sender] = {};
         }
-        emojisPerSender[msg.sender][emoji] = (emojisPerSender[msg.sender][emoji] || 0) + 1;
+        emojisPerSender[msg.sender][normalizedEmoji] = 
+          (emojisPerSender[msg.sender][normalizedEmoji] || 0) + 1;
         
         totalEmojis++;
       }
@@ -226,10 +252,10 @@ export function analyzeEmojis(chat: ParsedChat): EmojiAnalysis {
   
   return {
     totalEmojis,
-    uniqueEmojis: Object.keys(emojiFrequency).length,
-    emojiFrequency,
-    emojisPerSender,
-    topEmojis,
+    uniqueEmojis: Object.keys(rawEmojiFrequency).length, // Count of actual unique emojis (including variants)
+    emojiFrequency, // Normalized frequencies for display
+    emojisPerSender, // Normalized per sender
+    topEmojis, // Top normalized emojis
   };
 }
 

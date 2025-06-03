@@ -9,8 +9,44 @@ const MESSAGE_REGEX = /\[(\d{1,2}\/\d{1,2}\/\d{4}), (\d{1,2}:\d{2}:\d{2})\] (.+?
 // Helper function to extract emojis from text
 function extractEmojis(text: string): string[] {
   try {
-    const emojiRegex = /\p{Emoji}/gu;
-    return text.match(emojiRegex) || [];
+    // Comprehensive emoji regex that handles:
+    // - ZWJ sequences (👨‍👩‍👧‍👦)
+    // - Skin tone modifiers (👍🏽)
+    // - Keycap sequences (1️⃣)
+    // - Flag sequences (🇺🇸)
+    // - Text presentation vs emoji presentation
+    const emojiRegex = /(?:[\u{1F1E6}-\u{1F1FF}]{2})|(?:[\u{1F600}-\u{1F64F}][\u{1F3FB}-\u{1F3FF}]?)|(?:[\u{1F300}-\u{1F5FF}][\u{1F3FB}-\u{1F3FF}]?)|(?:[\u{1F680}-\u{1F6FF}][\u{1F3FB}-\u{1F3FF}]?)|(?:[\u{1F700}-\u{1F77F}])|(?:[\u{1F780}-\u{1F7FF}])|(?:[\u{1F800}-\u{1F8FF}])|(?:[\u{1F900}-\u{1F9FF}][\u{1F3FB}-\u{1F3FF}]?)|(?:[\u{1FA00}-\u{1FA6F}])|(?:[\u{1FA70}-\u{1FAFF}][\u{1F3FB}-\u{1F3FF}]?)|(?:[\u{2600}-\u{26FF}][\u{1F3FB}-\u{1F3FF}]?)|(?:[\u{2700}-\u{27BF}])|(?:\u{200D})|(?:[\u{FE00}-\u{FE0F}])|(?:[0-9]\u{FE0F}?\u{20E3})|(?:[#*]\u{FE0F}?\u{20E3})|(?:\u{1F3F4}[\u{E0060}-\u{E00FF}]+[\u{E007F}])/gu;
+    
+    // Find all potential emoji sequences including ZWJ sequences
+    const matches: string[] = [];
+    let match;
+    
+    // Use a more comprehensive approach to capture complete emoji sequences
+    const advancedEmojiRegex = /(?:(?:\ud83c[\udf00-\udfff])|(?:\ud83d[\udc00-\ude4f\ude80-\udeff])|(?:\ud83e[\udd00-\uddff\ude00-\ude6f\ude70-\ude74\ude78-\ude7a\ude80-\ude86\ude90-\udeac\udeb0-\udeba\udec0-\udec2\uded0-\uded6\udf00-\udf92\udf94-\udf9a\udf9c-\udfad\udfb0-\udfb8\udfc0\udfe0-\udfeb])|(?:\u26c4|\u2600|\u2601|\u26c5|\u26a1|\u2744|\u26c1|\u26aa|\u26ab|\u26bd|\u26be|\u2615|\u26f7|\u26f9|\u2618|\u26fa|\u26fd|\u2696|\u2660|\u2663|\u2665|\u2666|\u26d1|\u26d3|\u26f0|\u26f1|\u26f4|\u26f8|\u2708|\u2692|\u2693|\u2694|\u269a|\u2699|\u269b|\u269c|\u26a0|\u26b0|\u26b1|\u26d4|\u26ea|\u26f2|\u26f3|\u26f5|\u26fa|\u2702|\u2705|\u2708|\u2709|\u270a|\u270b|\u270c|\u270d|\u270f|\u2712|\u2714|\u2716|\u271d|\u2721|\u2728|\u2733|\u2734|\u2744|\u2747|\u274c|\u274e|\u2753|\u2754|\u2755|\u2757|\u2763|\u2764|\u2795|\u2796|\u2797|\u27a1|\u27b0|\u27bf|\u2934|\u2935))(?:\ufe0f)?(?:\u200d(?:(?:\ud83c[\udf00-\udfff])|(?:\ud83d[\udc00-\ude4f\ude80-\udeff])|(?:\ud83e[\udd00-\uddff\ude00-\ude6f\ude70-\ude74\ude78-\ude7a\ude80-\ude86\ude90-\udeac\udeb0-\udeba\udec0-\udec2\uded0-\uded6\udf00-\udf92\udf94-\udf9a\udf9c-\udfad\udfb0-\udfb8\udfc0\udfe0-\udfeb])|\u2640|\u2642|\u2695|\u2696|\u2708|\u2764)(?:\ufe0f)?)*(?:\ud83c[\udffb-\udfff])?/g;
+    
+    while ((match = advancedEmojiRegex.exec(text)) !== null) {
+      const emoji = match[0];
+      
+      // Filter out standalone modifiers, ZWJ, and variation selectors
+      if (emoji && 
+          emoji !== '\u200D' && // ZWJ
+          !/^[\u{1F3FB}-\u{1F3FF}]$/u.test(emoji) && // Standalone skin tone
+          !/^[\u{FE00}-\u{FE0F}]$/u.test(emoji) && // Variation selector
+          !/^[\u{2640}\u{2642}]$/u.test(emoji) // Standalone gender symbols
+      ) {
+        matches.push(emoji);
+      }
+    }
+    
+    // Additional filter to exclude basic digits and symbols
+    return matches.filter(emoji => {
+      // Don't filter out number emojis like 1️⃣, 2️⃣ etc. as they are legitimate emojis
+      // Only filter standalone digits
+      if (/^[0-9]$/.test(emoji)) return false;
+      if (/^[#*]$/.test(emoji)) return false;
+      
+      return true;
+    });
   } catch {
     return [];
   }
