@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { useUIStore, ChartSettings } from '../../stores/uiStore';
 import { aggregateDailyActivity } from '../../utils/analyzer';
 import { getSenderColor, getChartColors } from '../../utils/chartUtils';
+import { Check } from 'lucide-react';
 
 interface ActivityTimelineProps {
   analytics: ProcessedAnalytics;
@@ -13,7 +14,7 @@ interface ActivityTimelineProps {
 }
 
 export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, settings }) => {
-  const { theme } = useUIStore();
+  const { theme, updateChartSettings } = useUIStore();
   const [chartType, setChartType] = useState<'line' | 'bar'>('line');
 
   // Store brush selection (not domain) to maintain zoom state
@@ -606,8 +607,9 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, s
         </p>
       </div>
 
-      {/* Chart type toggle */}
-      <div className="mb-4 flex justify-center">
+      {/* Chart controls */}
+      <div className="mb-4 flex flex-col sm:flex-row gap-4 items-center justify-center">
+        {/* Chart type toggle */}
         <div className="inline-flex rounded-lg shadow-sm" role="group">
           <button
             type="button"
@@ -641,6 +643,28 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, s
             </svg>
             Bar Chart
           </button>
+        </div>
+
+        {/* Separate by Sender Toggle */}
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Separate by Sender</span>
+          <label className="cursor-pointer">
+            <input
+              type="checkbox"
+              checked={settings.separateMessagesBySender}
+              onChange={(e) => updateChartSettings({ separateMessagesBySender: e.target.checked })}
+              className="sr-only"
+            />
+            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+              settings.separateMessagesBySender
+                ? 'bg-blue-500 border-blue-500'
+                : 'border-gray-300 dark:border-gray-500'
+            }`}>
+              {settings.separateMessagesBySender && (
+                <Check className="w-3 h-3 text-white" />
+              )}
+            </div>
+          </label>
         </div>
       </div>
 

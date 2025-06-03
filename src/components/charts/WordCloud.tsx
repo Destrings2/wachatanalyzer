@@ -3,7 +3,9 @@ import { ProcessedAnalytics, Message } from '../../types';
 import * as d3 from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useTheme } from '../../hooks/useTheme';
-import { BookOpen, TrendingUp, Users, Brain, Clock, Award, Zap, MessageCircle } from 'lucide-react';
+import { useUIStore } from '../../stores/uiStore';
+import { getSenderColor } from '../../utils/chartUtils';
+import { BookOpen, TrendingUp, Users, Brain, Clock, Award, Zap, MessageCircle, Check } from 'lucide-react';
 import Sentiment from 'sentiment';
 
 interface WordCloudProps {
@@ -33,6 +35,7 @@ interface SenderVocabulary {
 
 export const WordCloud: React.FC<WordCloudProps> = ({ analytics, messages = [] }) => {
   const { theme } = useTheme();
+  const { chartSettings, updateChartSettings } = useUIStore();
   const [viewMode, setViewMode] = useState<'cloud' | 'frequency' | 'senders' | 'trends' | 'sentiment' | 'insights'>('cloud');
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
 
@@ -504,7 +507,7 @@ export const WordCloud: React.FC<WordCloudProps> = ({ analytics, messages = [] }
 
   // Render frequency bar chart
   const renderFrequencyChart = useD3((svg) => {
-    const margin = { top: 20, right: 30, bottom: 60, left: 60 };
+    const margin = { top: 20, right: chartSettings.separateMessagesBySender ? 150 : 30, bottom: 60, left: 60 };
     const width = 800 - margin.left - margin.right;
     const height = 400 - margin.top - margin.bottom;
 
@@ -516,16 +519,35 @@ export const WordCloud: React.FC<WordCloudProps> = ({ analytics, messages = [] }
       .append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`);
 
-    const data = analytics.wordFrequency.topWords.slice(0, 20);
+    // Get top 20 words from enhanced data
+    const topWords = Object.values(enhancedWordData.wordStats)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20);
+
+    // Get all senders for color mapping
+    const allSenders = Object.keys(messages.reduce((acc, msg) => ({ ...acc, [msg.sender]: true }), {})).sort();
 
     const x = d3.scaleBand()
       .range([0, width])
-      .domain(data.map(d => d.word))
+      .domain(topWords.map(d => d.word))
       .padding(0.1);
 
-    const y = d3.scaleLinear()
-      .range([height, 0])
-      .domain([0, d3.max(data, d => d.count) || 0]);
+    let y: d3.ScaleLinear<number, number>;
+    
+    if (chartSettings.separateMessagesBySender && allSenders.length > 0) {
+      // For stacked bars, calculate max height considering all senders
+      const maxCount = Math.max(...topWords.map(word => 
+        allSenders.reduce((sum, sender) => sum + (word.senders[sender] || 0), 0)
+      ));
+      y = d3.scaleLinear()
+        .range([height, 0])
+        .domain([0, maxCount]);
+    } else {
+      // For simple bars, use total count
+      y = d3.scaleLinear()
+        .range([height, 0])
+        .domain([0, d3.max(topWords, d => d.count) || 0]);
+    }
 
     // X axis
     g.append('g')
@@ -549,28 +571,132 @@ export const WordCloud: React.FC<WordCloudProps> = ({ analytics, messages = [] }
       .attr('fill', isDark ? '#9CA3AF' : '#4B5563')
       .text('Frequency');
 
-    // Bars
-    g.selectAll('.bar')
-      .data(data)
-      .enter().append('rect')
-      .attr('class', 'bar')
-      .attr('x', d => x(d.word) || 0)
-      .attr('width', x.bandwidth())
-      .attr('y', height)
-      .attr('height', 0)
-      .attr('fill', '#3B82F6')
-      .attr('opacity', 0.8)
-      .on('mouseover', function(event, d) {
-        d3.select(this).attr('opacity', 1);
-      })
-      .on('mouseout', function() {
-        d3.select(this).attr('opacity', 0.8);
-      })
-      .transition()
-      .duration(800)
-      .attr('y', d => y(d.count))
-      .attr('height', d => height - y(d.count));
-  }, [analytics.wordFrequency, isDark]);
+    // Create tooltip
+    const tooltip = d3.select('body').append('div')
+      .attr('class', 'word-frequency-tooltip')
+      .style('opacity', 0)
+      .style('position', 'absolute')
+      .style('background', isDark ? 'rgba(31, 41, 55, 0.95)' : 'rgba(255, 255, 255, 0.95)')
+      .style('border', `1px solid ${isDark ? '#374151' : '#E5E7EB'}`)
+      .style('border-radius', '8px')
+      .style('backdrop-filter', 'blur(8px)')
+      .style('box-shadow', '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)')
+      .style('padding', '8px 12px')
+      .style('font-size', '12px')
+      .style('color', isDark ? '#F3F4F6' : '#1F2937')
+      .style('pointer-events', 'none')
+      .style('z-index', '1000');
+
+    if (chartSettings.separateMessagesBySender && allSenders.length > 0) {
+      // Render stacked bars by sender
+      topWords.forEach(word => {
+        let currentY = height;
+        
+        allSenders.forEach((sender, senderIndex) => {
+          const senderCount = word.senders[sender] || 0;
+          if (senderCount === 0) return;
+          
+          const senderColor = getSenderColor(senderIndex, theme);
+          const barHeight = height - y(senderCount);
+          
+          g.append('rect')
+            .attr('class', `bar sender-${senderIndex}`)
+            .attr('x', x(word.word) || 0)
+            .attr('width', x.bandwidth())
+            .attr('y', currentY)
+            .attr('height', 0)
+            .attr('fill', senderColor)
+            .attr('stroke', isDark ? '#1F2937' : '#FFFFFF')
+            .attr('stroke-width', 0.5)
+            .style('cursor', 'pointer')
+            .on('mouseover', function(event) {
+              d3.select(this).attr('opacity', 0.8);
+              tooltip.transition().duration(200).style('opacity', 1);
+              tooltip.html(`
+                <div style="font-weight: bold;">${word.word}</div>
+                <div style="color: ${senderColor}; margin-top: 4px;">${sender}: ${senderCount} times</div>
+                <div style="margin-top: 2px;">Total: ${word.count} times</div>
+              `)
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+            })
+            .on('mouseout', function() {
+              d3.select(this).attr('opacity', 1);
+              tooltip.transition().duration(300).style('opacity', 0);
+            })
+            .transition()
+            .duration(800)
+            .delay(senderIndex * 100)
+            .attr('y', currentY - barHeight)
+            .attr('height', barHeight);
+          
+          currentY -= barHeight;
+        });
+      });
+
+      // Add legend for senders
+      const legend = g.append('g')
+        .attr('class', 'legend')
+        .attr('transform', `translate(${width + 20}, 20)`);
+
+      allSenders.forEach((sender, index) => {
+        const senderColor = getSenderColor(index, theme);
+        const legendItem = legend.append('g')
+          .attr('transform', `translate(0, ${index * 20})`);
+
+        legendItem.append('rect')
+          .attr('x', 0)
+          .attr('y', -6)
+          .attr('width', 12)
+          .attr('height', 12)
+          .attr('fill', senderColor);
+
+        legendItem.append('text')
+          .attr('x', 18)
+          .attr('y', 0)
+          .attr('dy', '0.35em')
+          .style('font-size', '12px')
+          .style('fill', isDark ? '#9CA3AF' : '#4B5563')
+          .text(sender.length > 15 ? sender.substring(0, 15) + '...' : sender);
+      });
+    } else {
+      // Render simple bars (total count)
+      g.selectAll('.bar')
+        .data(topWords)
+        .enter().append('rect')
+        .attr('class', 'bar')
+        .attr('x', d => x(d.word) || 0)
+        .attr('width', x.bandwidth())
+        .attr('y', height)
+        .attr('height', 0)
+        .attr('fill', '#3B82F6')
+        .attr('opacity', 0.8)
+        .style('cursor', 'pointer')
+        .on('mouseover', function(event, d) {
+          d3.select(this).attr('opacity', 1);
+          tooltip.transition().duration(200).style('opacity', 1);
+          tooltip.html(`
+            <div style="font-weight: bold;">${d.word}</div>
+            <div style="margin-top: 4px;">${d.count} times</div>
+          `)
+            .style('left', (event.pageX + 10) + 'px')
+            .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mouseout', function() {
+          d3.select(this).attr('opacity', 0.8);
+          tooltip.transition().duration(300).style('opacity', 0);
+        })
+        .transition()
+        .duration(800)
+        .attr('y', d => y(d.count))
+        .attr('height', d => height - y(d.count));
+    }
+
+    // Cleanup function
+    return () => {
+      d3.selectAll('.word-frequency-tooltip').remove();
+    };
+  }, [enhancedWordData.wordStats, isDark, chartSettings.separateMessagesBySender, theme, messages]);
 
   return (
     <div className="space-y-6">
@@ -629,21 +755,47 @@ export const WordCloud: React.FC<WordCloudProps> = ({ analytics, messages = [] }
         </div>
       </div>
 
-      {/* View Mode Tabs */}
-      <div className="flex gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
-        {(['cloud', 'frequency', 'senders', 'trends', 'sentiment', 'insights'] as const).map((mode) => (
-          <button
-            key={mode}
-            onClick={() => setViewMode(mode)}
-            className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              viewMode === mode
-                ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-            }`}
-          >
-            {mode.charAt(0).toUpperCase() + mode.slice(1)}
-          </button>
-        ))}
+      {/* View Mode Tabs and Settings */}
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+        <div className="flex gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+          {(['cloud', 'frequency', 'senders', 'trends', 'sentiment', 'insights'] as const).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => setViewMode(mode)}
+              className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                viewMode === mode
+                  ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              {mode.charAt(0).toUpperCase() + mode.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {/* Separate by Sender Toggle - Only show for relevant views */}
+        {(['frequency', 'senders'].includes(viewMode)) && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-700 dark:text-gray-300">Separate by Sender</span>
+            <label className="cursor-pointer">
+              <input
+                type="checkbox"
+                checked={chartSettings.separateMessagesBySender}
+                onChange={(e) => updateChartSettings({ separateMessagesBySender: e.target.checked })}
+                className="sr-only"
+              />
+              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                chartSettings.separateMessagesBySender
+                  ? 'bg-blue-500 border-blue-500'
+                  : 'border-gray-300 dark:border-gray-500'
+              }`}>
+                {chartSettings.separateMessagesBySender && (
+                  <Check className="w-3 h-3 text-white" />
+                )}
+              </div>
+            </label>
+          </div>
+        )}
       </div>
 
       {/* Main Content Area */}

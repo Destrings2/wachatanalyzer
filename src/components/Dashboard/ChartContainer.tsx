@@ -1,6 +1,6 @@
-import React, { Suspense, lazy, useState } from 'react';
+import React, { Suspense, lazy } from 'react';
 import { ProcessedAnalytics, Message } from '../../types';
-import { Loader2, Settings, Check } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
 import { NoDataState, ErrorState } from '../ui/EmptyState';
 
@@ -27,8 +27,7 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
   isLoading = false,
   error
 }) => {
-  const [showSettings, setShowSettings] = useState(false);
-  const { chartSettings, updateChartSettings } = useUIStore();
+  const { chartSettings } = useUIStore();
 
   const renderChart = () => {
     // Handle error state
@@ -81,99 +80,6 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
 
   return (
     <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 lg:p-6 overflow-hidden">
-      {/* Settings Button */}
-      <div className="absolute top-3 right-3 lg:top-4 lg:right-4 z-10">
-        <div className="relative">
-          <button
-            onClick={() => setShowSettings(!showSettings)}
-            className="p-2 lg:p-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors touch-manipulation min-w-touch min-h-touch flex items-center justify-center"
-            title="Chart Settings"
-          >
-            <Settings className="w-5 h-5" />
-          </button>
-
-          {/* Settings Dropdown */}
-          {showSettings && (
-            <div className="absolute right-0 top-full mt-2 w-64 sm:w-72 bg-white dark:bg-gray-700 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 p-4 z-20 max-w-[calc(100vw-2rem)]">
-              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">Chart Settings</h3>
-
-              <div className="space-y-3">
-                {/* Separate Messages by Sender */}
-                <label className="flex items-center justify-between cursor-pointer">
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    Separate by Sender
-                  </span>
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={chartSettings.separateMessagesBySender}
-                      onChange={(e) => updateChartSettings({ separateMessagesBySender: e.target.checked })}
-                      className="sr-only"
-                    />
-                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                      chartSettings.separateMessagesBySender
-                        ? 'bg-blue-500 border-blue-500'
-                        : 'border-gray-300 dark:border-gray-500'
-                    }`}>
-                      {chartSettings.separateMessagesBySender && (
-                        <Check className="w-3 h-3 text-white" />
-                      )}
-                    </div>
-                  </div>
-                </label>
-
-                {/* Show Message Count */}
-                <label className="flex items-center justify-between cursor-pointer">
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    Show Message Count
-                  </span>
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={chartSettings.showMessageCount}
-                      onChange={(e) => updateChartSettings({ showMessageCount: e.target.checked })}
-                      className="sr-only"
-                    />
-                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                      chartSettings.showMessageCount
-                        ? 'bg-blue-500 border-blue-500'
-                        : 'border-gray-300 dark:border-gray-500'
-                    }`}>
-                      {chartSettings.showMessageCount && (
-                        <Check className="w-3 h-3 text-white" />
-                      )}
-                    </div>
-                  </div>
-                </label>
-
-                {/* Enable Animations */}
-                <label className="flex items-center justify-between cursor-pointer">
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    Enable Animations
-                  </span>
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={chartSettings.enableAnimations}
-                      onChange={(e) => updateChartSettings({ enableAnimations: e.target.checked })}
-                      className="sr-only"
-                    />
-                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                      chartSettings.enableAnimations
-                        ? 'bg-blue-500 border-blue-500'
-                        : 'border-gray-300 dark:border-gray-500'
-                    }`}>
-                      {chartSettings.enableAnimations && (
-                        <Check className="w-3 h-3 text-white" />
-                      )}
-                    </div>
-                  </div>
-                </label>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
 
       <div className="w-full overflow-x-auto">
         <Suspense

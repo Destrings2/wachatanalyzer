@@ -5,6 +5,7 @@ import { useD3 } from '../../hooks/useD3';
 import { useUIStore, ChartSettings } from '../../stores/uiStore';
 import { aggregateHourlyActivity } from '../../utils/analyzer';
 import { getSenderColor, getChartColors } from '../../utils/chartUtils';
+import { Check } from 'lucide-react';
 
 interface RadialActivityClockProps {
   analytics: ProcessedAnalytics;
@@ -12,7 +13,7 @@ interface RadialActivityClockProps {
 }
 
 export const RadialActivityClock: React.FC<RadialActivityClockProps> = ({ analytics, settings }) => {
-  const { theme } = useUIStore();
+  const { theme, updateChartSettings } = useUIStore();
 
   // Transform hourly activity data for D3
   const data = useMemo(() => {
@@ -476,6 +477,30 @@ export const RadialActivityClock: React.FC<RadialActivityClockProps> = ({ analyt
 
         {/* Desktop Legend - only show on larger screens */}
         <div className="hidden sm:flex ml-6 flex-col space-y-3 flex-shrink-0">
+          {/* Separate by Sender Toggle */}
+          <div className="pb-2 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Separate by Sender</span>
+              <label className="cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.separateMessagesBySender}
+                  onChange={(e) => updateChartSettings({ separateMessagesBySender: e.target.checked })}
+                  className="sr-only"
+                />
+                <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+                  settings.separateMessagesBySender
+                    ? 'bg-blue-500 border-blue-500'
+                    : 'border-gray-300 dark:border-gray-500'
+                }`}>
+                  {settings.separateMessagesBySender && (
+                    <Check className="w-2.5 h-2.5 text-white" />
+                  )}
+                </div>
+              </label>
+            </div>
+          </div>
+
           <div className="flex items-center text-xs">
             <div className={`w-3 h-3 rounded-sm mr-2 ${theme === 'dark' ? 'bg-blue-900' : 'bg-blue-100'}`}></div>
             <span className="text-gray-600 dark:text-gray-400">Low Activity</span>
@@ -499,6 +524,28 @@ export const RadialActivityClock: React.FC<RadialActivityClockProps> = ({ analyt
 
       {/* Mobile legend and stats - only show on small screens */}
       <div className="block sm:hidden mt-4 px-2 space-y-3">
+        {/* Separate by Sender Toggle */}
+        <div className="flex items-center justify-center gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Separate by Sender</span>
+          <label className="cursor-pointer">
+            <input
+              type="checkbox"
+              checked={settings.separateMessagesBySender}
+              onChange={(e) => updateChartSettings({ separateMessagesBySender: e.target.checked })}
+              className="sr-only"
+            />
+            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+              settings.separateMessagesBySender
+                ? 'bg-blue-500 border-blue-500'
+                : 'border-gray-300 dark:border-gray-500'
+            }`}>
+              {settings.separateMessagesBySender && (
+                <Check className="w-3 h-3 text-white" />
+              )}
+            </div>
+          </label>
+        </div>
+
         {/* Legend */}
         <div className="flex items-center justify-center space-x-6">
           <div className="flex items-center text-xs">
