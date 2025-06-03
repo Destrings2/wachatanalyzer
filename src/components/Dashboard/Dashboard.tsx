@@ -2,7 +2,7 @@ import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { useChatStore } from '../../stores/chatStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useFilterStore } from '../../stores/filterStore';
-import { StatsOverview } from './StatsOverview';
+import { Home } from './Home';
 import { FilterBar } from './FilterBar';
 import { ChartContainer } from './ChartContainer';
 import { ProcessedAnalytics, Message } from '../../types';
@@ -18,19 +18,20 @@ export const Dashboard: React.FC = () => {
   const { theme, toggleTheme, sidebarCollapsed, toggleSidebar } = useUIStore();
   const { selectedSenders, searchKeyword, messageTypes, dateRange, filterAndAnalyze, isFiltering, initializeIndices } = useFilterStore();
 
-  const [selectedChart, setSelectedChart] = useState('timeline');
+  const [selectedChart, setSelectedChart] = useState('home');
   const [filteredAnalytics, setFilteredAnalytics] = useState<ProcessedAnalytics | null>(null);
   const [filteredMessages, setFilteredMessages] = useState<Message[] | null>(null);
   const [indicesInitialized, setIndicesInitialized] = useState(false);
 
   const chartTypes = [
+    { id: 'home', name: 'Overview', icon: '🏠' },
     { id: 'timeline', name: 'Activity Timeline', icon: '📈' },
     { id: 'radial', name: 'Activity Clock', icon: '🕐' },
     { id: 'calls', name: 'Call Analysis', icon: '📞' },
     { id: 'heatmap', name: 'Activity Heatmap', icon: '🔥' },
     { id: 'messages', name: 'Chat Messages', icon: '💬' },
     { id: 'emoji', name: 'Emoji Analysis', icon: '😊' },
-    { id: 'wordcloud', name: 'Word Cloud', icon: '💬' },
+    {id: 'wordcloud', name: 'Word Cloud', icon: '📝'},
     { id: 'response', name: 'Response Patterns', icon: '↩️' },
     { id: 'network', name: 'Chat Network', icon: '🕸️' },
   ];
@@ -226,13 +227,14 @@ export const Dashboard: React.FC = () => {
               dateRange={[metadata.dateRange.start, metadata.dateRange.end]}
             />
 
-            {/* Stats Overview */}
-            {selectedChart !== 'messages' && (
-              <StatsOverview analytics={filteredAnalytics || analytics} metadata={metadata}/>
-            )}
-
-            {/* Chart or ChatView */}
-            {selectedChart === 'messages' ? (
+            {/* Content based on selected view */}
+            {selectedChart === 'home' ? (
+              <Home
+                analytics={filteredAnalytics || analytics}
+                metadata={metadata}
+                participants={participants}
+              />
+            ) : selectedChart === 'messages' ? (
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden" style={{ height: 'calc(100vh - 300px)' }}>
                 <Suspense
                   fallback={
