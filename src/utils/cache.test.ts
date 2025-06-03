@@ -154,11 +154,25 @@ describe('PerformanceCache', () => {
       const differentChat: ParsedChat = {
         ...mockChat,
         messages: [
+          ...mockChat.messages,
           {
-            ...mockChat.messages[0],
-            content: 'Different content',
+            datetime: new Date('2024-01-02T10:00:00Z'),
+            timestamp: 1704196800000,
+            sender: 'Jane',
+            content: 'Another message',
+            type: 'text',
+            metadata: {
+              hasEmoji: false,
+              hasUrl: false,
+              wordCount: 2,
+              charCount: 15,
+            },
           }
         ],
+        metadata: {
+          ...mockChat.metadata,
+          totalMessages: 2, // Different message count
+        }
       };
       
       const retrieved = performanceCache.getCachedAnalytics(differentChat);
