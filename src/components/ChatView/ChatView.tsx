@@ -1,15 +1,15 @@
 import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { startOfDay, isSameDay } from 'date-fns';
 import { useChatStore } from '../../stores/chatStore';
 import { useFilterStore } from '../../stores/filterStore';
 import { MessageBubble } from './MessageBubble';
 import { DateSeparator } from './DateSeparator';
 import { DateNavigator } from './DateNavigator';
-import { SearchHighlight } from './SearchHighlight';
 import { EmptyState } from '../ui/EmptyState';
 import { Skeleton } from '../ui/Skeleton';
 import { Message } from '../../types';
-import {Search, Calendar, Settings, ArrowDown} from 'lucide-react';
+import { Search, Calendar, Settings, ArrowDown } from 'lucide-react';
 import clsx from 'clsx';
 
 interface ChatViewProps {
@@ -20,53 +20,28 @@ interface ChatViewProps {
 interface ChatItem {
   type: 'message' | 'date-separator';
   data: Message | Date;
-  index: number;
-  isGrouped?: boolean; // For consecutive messages from same sender
+  id: string;
+  isGrouped?: boolean;
   isLastInGroup?: boolean;
 }
 
-const CHUNK_SIZE = 150; // Messages per chunk
-const MAX_RENDERED_ITEMS = 500; // Maximum DOM items
-
-export const ChatView: React.FC<ChatViewProps> = ({ className, messages }) => {
-  const { isLoading } = useChatStore();
-  const { searchKeyword } = useFilterStore();
-  const [showDateNavigator, setShowDateNavigator] = useState(false);
-  const [autoScroll, setAutoScroll] = useState(true);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-
-  // Chunking state
-  const [visibleRange, setVisibleRange] = useState({ start: 0, end: CHUNK_SIZE });
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const lastScrollTopRef = useRef<number>(0);
-
-  // Enhanced scroll management refs
-  const scrollDebounceRef = useRef<number | null>(null);
-  const isUserScrollingRef = useRef(false);
-  const anchorMessageRef = useRef<{ index: number; offsetTop: number } | null>(null);
-  const lastLoadTimeRef = useRef<number>(0);
-  const pendingScrollRestoreRef = useRef<boolean>(false);
-
-  // Use messages directly from props (already filtered by Dashboard)
-  const filteredMessages = messages;
-
-  // Process messages for chat display with date separators and grouping
-  const chatItems = useMemo(() => {
-    if (!filteredMessages || filteredMessages.length === 0) return [];
+// Custom hook to process messages into chat items
+const useChatItems = (messages: Message[]): ChatItem[] => {
+  return useMemo(() => {
+    if (!messages || messages.length === 0) return [];
 
     const items: ChatItem[] = [];
     let currentDate: Date | null = null;
     let lastSender: string | null = null;
-    let groupStartIndex = -1;
 
-    filteredMessages.forEach((message: Message, index: number) => {
+    messages.forEach((message, index) => {
       const messageDate = startOfDay(message.datetime);
+      const nextMessage = messages[index + 1];
 
       // Add date separator if day changed
       if (!currentDate || !isSameDay(currentDate, messageDate)) {
-        // Mark last message in previous group
-        if (groupStartIndex >= 0 && items.length > 0) {
+        if (lastSender && items.length > 0) {
+          // Mark last message in previous group
           const lastItem = items[items.length - 1];
           if (lastItem.type === 'message') {
             lastItem.isLastInGroup = true;
@@ -76,27 +51,22 @@ export const ChatView: React.FC<ChatViewProps> = ({ className, messages }) => {
         items.push({
           type: 'date-separator',
           data: messageDate,
-          index: items.length
+          id: `date-${messageDate.getTime()}`
         });
         currentDate = messageDate;
         lastSender = null;
-        groupStartIndex = -1;
       }
 
-      // Determine if this message should be grouped with previous
+      // Determine grouping
       const isGrouped = lastSender === message.sender;
-      const isLastInGroup = index === filteredMessages.length - 1 ||
-                           filteredMessages[index + 1]?.sender !== message.sender ||
-                           !isSameDay(message.datetime, filteredMessages[index + 1]?.datetime);
-
-      if (!isGrouped) {
-        groupStartIndex = items.length;
-      }
+      const isLastInGroup = !nextMessage ||
+                           nextMessage.sender !== message.sender ||
+                           !isSameDay(message.datetime, nextMessage.datetime);
 
       items.push({
         type: 'message',
         data: message,
-        index: items.length,
+        id: message.id,
         isGrouped,
         isLastInGroup
       });
@@ -104,255 +74,103 @@ export const ChatView: React.FC<ChatViewProps> = ({ className, messages }) => {
       lastSender = message.sender;
     });
 
-    // Mark the last message as end of group
-    if (items.length > 0 && items[items.length - 1].type === 'message') {
-      items[items.length - 1].isLastInGroup = true;
-    }
-
     return items;
-  }, [filteredMessages]);
+  }, [messages]);
+};
 
-  // Get currently visible chat items based on range
-  const visibleChatItems = useMemo(() => {
-    const start = Math.max(0, visibleRange.start);
-    const end = Math.min(chatItems.length, visibleRange.end);
-    return chatItems.slice(start, end);
-  }, [chatItems, visibleRange]);
+export const ChatView: React.FC<ChatViewProps> = ({ className, messages }) => {
+  const { isLoading } = useChatStore();
+  const { searchKeyword } = useFilterStore();
+  const [showDateNavigator, setShowDateNavigator] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  // Load more content with scroll position preservation
-  const loadMoreContent = useCallback((direction: 'up' | 'down') => {
-    if (isLoadingMore || !scrollContainerRef.current || pendingScrollRestoreRef.current) return;
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const chatItems = useChatItems(messages);
 
-    // Prevent rapid successive loads (cooldown period)
-    const now = Date.now();
-    if (now - lastLoadTimeRef.current < 800) {
-      return;
-    }
-    lastLoadTimeRef.current = now;
-
-    const container = scrollContainerRef.current;
-    setIsLoadingMore(true);
-
-    if (direction === 'up' && visibleRange.start > 0) {
-      // Store current scroll state before any DOM changes
-      const scrollTop = container.scrollTop;
-      const scrollHeight = container.scrollHeight;
-      
-      // Find anchor message with better precision
-      const visibleMessages = Array.from(container.querySelectorAll('[data-index]'));
-      const containerRect = container.getBoundingClientRect();
-      
-      // Find message closest to 30% from top of viewport for stable anchor
-      const targetY = containerRect.top + (containerRect.height * 0.3);
-      let anchorElement: Element | null = null;
-      let minDistance = Infinity;
-      
-      for (const msg of visibleMessages) {
-        const rect = msg.getBoundingClientRect();
-        const distance = Math.abs(rect.top - targetY);
-        if (distance < minDistance && rect.bottom > containerRect.top) {
-          minDistance = distance;
-          anchorElement = msg;
-        }
+  // Virtual scrolling setup with dynamic height support
+  const virtualizer = useVirtualizer({
+    count: chatItems.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: useCallback((index) => {
+      // Better estimates based on item type
+      const item = chatItems[index];
+      if (!item) return 80;
+      return item.type === 'date-separator' ? 40 : 80;
+    }, [chatItems]),
+    overscan: 10, // Render 10 items outside visible area
+    measureElement: useCallback((element, entry, instance) => {
+      // Avoid remeasuring when scrolling up to prevent jumps
+      const direction = instance.scrollDirection;
+      if (direction === "backward") {
+        const index = Number(element.getAttribute("data-index"));
+        const cached = instance.itemSizeCache.get(index);
+        if (cached) return cached;
       }
-
-      if (anchorElement) {
-        const anchorIndex = parseInt(anchorElement.getAttribute('data-index') || '-1');
-        const anchorRect = anchorElement.getBoundingClientRect();
-        anchorMessageRef.current = {
-          index: anchorIndex,
-          offsetTop: anchorRect.top - containerRect.top
-        };
-      }
-
-      // Mark that we're waiting for scroll restoration
-      pendingScrollRestoreRef.current = true;
-
-      // Load older messages
-      const newStart = Math.max(0, visibleRange.start - CHUNK_SIZE);
-      
-      setVisibleRange(prev => ({
-        start: newStart,
-        end: Math.min(chatItems.length, prev.end)
-      }));
-
-      // Use double RAF for smoother updates
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (anchorMessageRef.current && container) {
-            const targetElement = container.querySelector(`[data-index="${anchorMessageRef.current.index}"]`);
-            if (targetElement) {
-              const newAnchorRect = targetElement.getBoundingClientRect();
-              const newContainerRect = container.getBoundingClientRect();
-              const currentOffset = newAnchorRect.top - newContainerRect.top;
-              const scrollAdjustment = currentOffset - anchorMessageRef.current.offsetTop;
-              
-              // Apply scroll adjustment smoothly
-              container.scrollTop += scrollAdjustment;
-            } else {
-              // Fallback: estimate based on height difference
-              const heightDiff = container.scrollHeight - scrollHeight;
-              container.scrollTop = scrollTop + heightDiff;
-            }
-            anchorMessageRef.current = null;
-          }
-          pendingScrollRestoreRef.current = false;
-          setIsLoadingMore(false);
-        });
-      });
-      
-    } else if (direction === 'down' && visibleRange.end < chatItems.length) {
-      // Loading newer messages - simpler
-      setVisibleRange(prev => ({
-        start: prev.start,
-        end: Math.min(chatItems.length, prev.end + CHUNK_SIZE)
-      }));
-
-      requestAnimationFrame(() => {
-        setIsLoadingMore(false);
-      });
-    } else {
-      setIsLoadingMore(false);
-    }
-  }, [isLoadingMore, visibleRange, chatItems.length]);
-
-  // Debounced scroll handler
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-
-    // Clear existing debounce
-    if (scrollDebounceRef.current) {
-      clearTimeout(scrollDebounceRef.current);
-    }
-
-    // Mark as user scrolling
-    isUserScrollingRef.current = true;
-    lastScrollTopRef.current = scrollTop;
-
-    // Debounced scroll handling
-    scrollDebounceRef.current = setTimeout(() => {
-      if (!isLoadingMore && scrollHeight > clientHeight) {
-        const scrollPercentage = scrollTop / (scrollHeight - clientHeight);
-
-        // Load more when near edges (more conservative thresholds for mobile)
-        if (scrollPercentage < 0.2 && visibleRange.start > 0) {
-          loadMoreContent('up');
-        } else if (scrollPercentage > 0.8 && visibleRange.end < chatItems.length) {
-          loadMoreContent('down');
-        }
-      }
-
-      isUserScrollingRef.current = false;
-    }, 200); // Increased debounce for mobile stability
-  }, [loadMoreContent, isLoadingMore, visibleRange, chatItems.length]);
-
-  // Memory management (separate from scroll events)
-  useEffect(() => {
-    // Only manage memory when not actively loading and not user scrolling
-    if (!isLoadingMore && !isUserScrollingRef.current &&
-        visibleRange.end - visibleRange.start > MAX_RENDERED_ITEMS) {
-
-      const container = scrollContainerRef.current;
-      if (!container) return;
-
-      const scrollTop = container.scrollTop;
-      const scrollHeight = container.scrollHeight;
-      const clientHeight = container.clientHeight;
-      const scrollPercentage = scrollTop / (scrollHeight - clientHeight);
-
-      // Calculate new range based on current scroll position
-      const totalItems = visibleRange.end - visibleRange.start;
-      const targetSize = Math.floor(MAX_RENDERED_ITEMS * 0.8); // Use 80% of max for buffer
-      const currentIndex = visibleRange.start + Math.floor(totalItems * scrollPercentage);
-      const halfTarget = Math.floor(targetSize / 2);
-
-      const newStart = Math.max(0, currentIndex - halfTarget);
-      const newEnd = Math.min(chatItems.length, newStart + targetSize);
-
-      setVisibleRange({ start: newStart, end: newEnd });
-    }
-  }, [visibleRange, isLoadingMore, chatItems.length]);
+      return element.getBoundingClientRect().height;
+    }, []),
+  });
 
   // Jump to specific date
   const jumpToDate = useCallback((date: Date) => {
-    const targetIndex = chatItems.findIndex(item =>
-      item.type === 'date-separator' &&
-      isSameDay(item.data as Date, date)
-    );
+    // Find the first message of the selected date (not just the separator)
+    const targetIndex = chatItems.findIndex((item, index) => {
+      if (item.type === 'message') {
+        const message = item.data as Message;
+        return isSameDay(message.datetime, date);
+      }
+      // Also check if this is the date separator for the target date
+      if (item.type === 'date-separator') {
+        return isSameDay(item.data as Date, date);
+      }
+      return false;
+    });
 
-    if (targetIndex >= 0 && scrollContainerRef.current) {
-      // Expand visible range to include target
-      setVisibleRange({
-        start: Math.max(0, targetIndex - CHUNK_SIZE),
-        end: Math.min(chatItems.length, targetIndex + CHUNK_SIZE)
-      });
+    if (targetIndex >= 0) {
+      // Scroll to the item programmatically
+      const scrollToTarget = () => {
+        const scrollElement = scrollContainerRef.current;
+        if (!scrollElement) return;
 
-      // Scroll to target after DOM update
-      setTimeout(() => {
-        const element = scrollContainerRef.current?.querySelector(`[data-index="${targetIndex}"]`);
-        element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 50);
+        // Get the virtual item
+        const virtualItems = virtualizer.getVirtualItems();
+        const targetVirtualItem = virtualItems.find(item => item.index === targetIndex);
+
+        if (targetVirtualItem) {
+          // Scroll directly to the position
+          scrollElement.scrollTop = targetVirtualItem.start - 20; // 20px padding
+        } else {
+          // If item not in virtual list, use scrollToIndex
+          virtualizer.scrollToIndex(targetIndex, {
+            behavior: 'auto',
+            align: 'start'
+          });
+        }
+      };
+
+      // Execute scroll
+      scrollToTarget();
 
       setSelectedDate(date);
-      setAutoScroll(false);
     }
-  }, [chatItems]);
+  }, [chatItems, virtualizer]);
 
   // Jump to latest messages
   const jumpToLatest = useCallback(() => {
-    if (scrollContainerRef.current && chatItems.length > 0) {
-      setVisibleRange({
-        start: Math.max(0, chatItems.length - CHUNK_SIZE),
-        end: chatItems.length
+    if (chatItems.length > 0) {
+      const scrollElement = scrollContainerRef.current;
+      if (!scrollElement) return;
+
+      // Then use virtualizer as backup
+      virtualizer.scrollToIndex(chatItems.length - 1, {
+        behavior: 'auto',
+        align: 'end'
       });
 
-      setTimeout(() => {
-        scrollContainerRef.current?.scrollTo({
-          top: scrollContainerRef.current.scrollHeight,
-          behavior: 'smooth'
-        });
-      }, 50);
+      // Ensure it worked after DOM updates
 
-      setAutoScroll(true);
       setSelectedDate(null);
     }
-  }, [chatItems.length]);
-
-  // Auto-scroll to bottom when new messages arrive (if auto-scroll is enabled)
-  useEffect(() => {
-    if (autoScroll && scrollContainerRef.current && chatItems.length > 0) {
-      setVisibleRange({
-        start: Math.max(0, chatItems.length - CHUNK_SIZE),
-        end: chatItems.length
-      });
-
-      setTimeout(() => {
-        scrollContainerRef.current?.scrollTo({
-          top: scrollContainerRef.current.scrollHeight,
-          behavior: 'auto'
-        });
-      }, 0);
-    }
-  }, [chatItems.length, autoScroll]);
-
-  // Initialize with latest messages
-  useEffect(() => {
-    if (chatItems.length > 0 && visibleRange.end === CHUNK_SIZE) {
-      setVisibleRange({
-        start: Math.max(0, chatItems.length - CHUNK_SIZE),
-        end: chatItems.length
-      });
-    }
-  }, [chatItems.length, visibleRange.end]);
-
-  // Cleanup timeouts on unmount
-  useEffect(() => {
-    return () => {
-      if (scrollDebounceRef.current) {
-        clearTimeout(scrollDebounceRef.current);
-      }
-    };
-  }, []);
+  }, [chatItems, virtualizer]);
 
   if (isLoading) {
     return (
@@ -399,7 +217,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ className, messages }) => {
             Chat Messages
           </h2>
           <span className="flex-shrink-0 px-2 py-1 text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full">
-            {filteredMessages?.length || 0}
+            {messages.length}
           </span>
         </div>
 
@@ -413,7 +231,6 @@ export const ChatView: React.FC<ChatViewProps> = ({ className, messages }) => {
                 : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
             )}
             title="Jump to date"
-            aria-pressed={showDateNavigator}
           >
             <Calendar className="w-4 h-4" />
           </button>
@@ -428,66 +245,57 @@ export const ChatView: React.FC<ChatViewProps> = ({ className, messages }) => {
         </div>
       </div>
 
-
-      {/* Messages List */}
+      {/* Virtual Message List */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 p-4 scrollbar-hide"
-        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 p-4"
         style={{
-          WebkitOverflowScrolling: 'touch',
-          overscrollBehavior: 'contain',
-          willChange: isLoadingMore ? 'scroll-position' : 'auto',
-          transform: 'translateZ(0)', // Force GPU acceleration
-          backfaceVisibility: 'hidden'
+          overscrollBehavior: 'contain'
         }}
       >
-        {/* Loading indicator for older messages */}
-        {isLoadingMore && visibleRange.start > 0 && (
-          <div className="flex justify-center py-2">
-            <div className="text-sm text-gray-500 dark:text-gray-400">Loading older messages...</div>
-          </div>
-        )}
+        <div
+          style={{
+            height: `${virtualizer.getTotalSize()}px`,
+            width: '100%',
+            position: 'relative',
+          }}
+        >
+          {virtualizer.getVirtualItems().map((virtualItem) => {
+            const item = chatItems[virtualItem.index];
 
-        {/* Rendered chat items */}
-        {visibleChatItems.map((item, index) => (
-          <div
-            key={`${item.type}-${item.index}`}
-            data-index={visibleRange.start + index}
-            className={clsx(
-              isLoadingMore ? 'transition-none' : 'transition-opacity duration-300',
-              'will-change-auto'
-            )}
-            style={{
-              opacity: isLoadingMore && pendingScrollRestoreRef.current ? 0.8 : 1
-            }}
-          >
-            {item.type === 'date-separator' ? (
-              <DateSeparator date={item.data as Date} />
-            ) : (
-              <MessageBubble
-                message={item.data as Message}
-                isGrouped={item.isGrouped}
-                isLastInGroup={item.isLastInGroup}
-                searchQuery={searchKeyword}
-                className={clsx(
-                  'transition-all duration-200',
-                  selectedDate && 'opacity-90'
+            return (
+              <div
+                key={virtualItem.key}
+                data-index={virtualItem.index}
+                ref={virtualizer.measureElement}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  transform: `translateY(${virtualItem.start}px)`,
+                }}
+              >
+                {item.type === 'date-separator' ? (
+                  <DateSeparator date={item.data as Date} />
+                ) : (
+                  <MessageBubble
+                    message={item.data as Message}
+                    isGrouped={item.isGrouped}
+                    isLastInGroup={item.isLastInGroup}
+                    searchQuery={searchKeyword}
+                    className={clsx(
+                      selectedDate && 'opacity-90'
+                    )}
+                  />
                 )}
-              />
-            )}
-          </div>
-        ))}
-
-        {/* Loading indicator for newer messages */}
-        {isLoadingMore && visibleRange.end < chatItems.length && (
-          <div className="flex justify-center py-2">
-            <div className="text-sm text-gray-500 dark:text-gray-400">Loading newer messages...</div>
-          </div>
-        )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Search Summary - Only show when search is active */}
+      {/* Search Summary */}
       {searchKeyword && (
         <div className="flex-shrink-0 px-3 sm:px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-t border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2 text-sm text-blue-800 dark:text-blue-200 flex-wrap">
@@ -505,7 +313,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ className, messages }) => {
       {/* Date Navigator Modal */}
       {showDateNavigator && (
         <DateNavigator
-          messages={filteredMessages || []}
+          messages={messages}
           onDateSelect={jumpToDate}
           onClose={() => setShowDateNavigator(false)}
           selectedDate={selectedDate}

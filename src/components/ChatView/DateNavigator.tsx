@@ -1,6 +1,5 @@
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { format, startOfDay, eachDayOfInterval, isSameDay } from 'date-fns';
-import { DateRangePicker } from '../DateRangePicker/DateRangePicker';
 import { Message } from '../../types';
 import { X, Calendar, Activity, ArrowLeft, ArrowRight } from 'lucide-react';
 import clsx from 'clsx';
@@ -10,11 +9,6 @@ interface DateNavigatorProps {
   onDateSelect: (date: Date) => void;
   onClose: () => void;
   selectedDate?: Date | null;
-}
-
-interface DailyActivityCache {
-  messagesHash: string;
-  dailyActivity: DayActivity[];
 }
 
 interface DayActivity {
@@ -56,15 +50,6 @@ export const DateNavigator: React.FC<DateNavigatorProps> = ({
       messageCount: messagesByDate.get(format(date, 'yyyy-MM-dd')) || 0,
       hasActivity: messagesByDate.has(format(date, 'yyyy-MM-dd'))
     }));
-
-    // Cache the result
-    cacheRef.current = {
-      messagesHash,
-      dailyActivity: result
-    };
-
-    setIsLoading(false);
-    return result;
   }, [messages]);
 
   // Get activity for current month view
