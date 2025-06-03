@@ -9,13 +9,21 @@ export const useD3 = (renderChartFn: (svg: d3.Selection<SVGSVGElement, unknown, 
     let cleanup: (() => void) | void;
     
     if (element) {
-      const svg = d3.select(element);
-      cleanup = renderChartFn(svg);
+      try {
+        const svg = d3.select(element);
+        cleanup = renderChartFn(svg);
+      } catch (error) {
+        console.error('Error in D3 render function:', error);
+      }
     }
     
     return () => {
-      if (cleanup) {
-        cleanup();
+      try {
+        if (cleanup) {
+          cleanup();
+        }
+      } catch (error) {
+        console.error('Error in D3 cleanup function:', error);
       }
       if (element) {
         d3.select(element).selectAll('*').remove();

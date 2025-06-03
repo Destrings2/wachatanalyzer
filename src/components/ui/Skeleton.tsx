@@ -4,27 +4,48 @@ import clsx from 'clsx';
 interface SkeletonProps {
   className?: string;
   animate?: boolean;
+  as?: keyof JSX.IntrinsicElements;
+  style?: React.CSSProperties;
 }
 
 export const Skeleton: React.FC<SkeletonProps> = ({ 
   className = '', 
-  animate = true 
+  animate = true,
+  as: Component = 'div',
+  ...props
 }) => {
   return (
-    <div
+    <Component
+      role="status"
+      aria-label="Loading..."
       className={clsx(
         'bg-gray-200 dark:bg-gray-700 rounded',
         animate && 'animate-pulse',
         className
       )}
+      {...props}
     />
   );
 };
 
 // Specific skeleton components for different UI elements
-export const ChartSkeleton: React.FC<{ height?: number }> = ({ height = 400 }) => {
+export const MessageSkeleton: React.FC<{ className?: string }> = ({ className = '' }) => {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 lg:p-6 border border-gray-200 dark:border-gray-700">
+    <div className={clsx('space-y-2 p-3', className)}>
+      <div className="flex items-start space-x-2">
+        <Skeleton className="w-8 h-8 rounded-full flex-shrink-0" />
+        <div className="flex-1 space-y-1">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-4 w-full max-w-xs" />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const ChartSkeleton: React.FC<{ height?: number; className?: string }> = ({ height = 400, className = '' }) => {
+  return (
+    <div className={clsx('bg-white dark:bg-gray-800 rounded-xl p-4 lg:p-6 border border-gray-200 dark:border-gray-700', className)}>
       <div className="flex justify-between items-center mb-6">
         <Skeleton className="h-6 w-32" />
         <Skeleton className="h-8 w-8 rounded-full" />
@@ -80,9 +101,9 @@ export const FilterBarSkeleton: React.FC = () => {
   );
 };
 
-export const DashboardSkeleton: React.FC = () => {
+export const DashboardSkeleton: React.FC<{ className?: string }> = ({ className = '' }) => {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex lg:flex-row flex-col">
+    <div className={clsx('min-h-screen bg-gray-50 dark:bg-gray-900 flex lg:flex-row flex-col', className)}>
       {/* Sidebar Skeleton */}
       <aside className="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 w-64 hidden lg:block">
         <div className="p-4">
