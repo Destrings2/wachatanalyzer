@@ -16,6 +16,11 @@ export const useTheme = () => {
 
   // Check system preference on mount
   useEffect(() => {
+    // Check if matchMedia is supported
+    if (typeof window.matchMedia !== 'function') {
+      return; // Skip system theme detection if matchMedia not available
+    }
+
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     
     // Set initial theme based on system preference if not already set
