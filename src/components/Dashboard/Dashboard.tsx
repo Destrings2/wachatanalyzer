@@ -90,7 +90,7 @@ export const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="h-screen bg-gray-50 dark:bg-gray-900 flex lg:flex-row flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex lg:flex-row flex-col">
       {/* Skip to content link for screen readers */}
       <a
         href="#main-content"
@@ -112,10 +112,10 @@ export const Dashboard: React.FC = () => {
         'bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-300',
         'lg:relative lg:translate-x-0',
         // Desktop behavior
-        'lg:flex lg:flex-col',
+        'lg:flex lg:flex-col lg:h-full',
         sidebarCollapsed ? 'lg:w-16' : 'lg:w-64',
         // Mobile behavior
-        'fixed top-0 left-0 h-full z-50 lg:z-auto',
+        'fixed top-0 left-0 h-dvh z-50 lg:z-auto',
         sidebarCollapsed ? '-translate-x-full lg:translate-x-0' : 'translate-x-0 w-64'
       )}>
         <div className="p-4 flex-1 overflow-y-auto">
@@ -168,7 +168,7 @@ export const Dashboard: React.FC = () => {
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 bg-gray-50 dark:bg-gray-900">
         {/* Header */}
         <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
           <div className="px-4 lg:px-6 py-4 flex items-center justify-between">
@@ -219,8 +219,8 @@ export const Dashboard: React.FC = () => {
         </header>
 
         {/* Content */}
-        <main id="main-content" className="flex-1 overflow-y-auto">
-          <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
+        <main id="main-content" className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900">
+          <div className="p-4 lg:p-6 space-y-4 lg:space-y-6 min-h-full">
             {/* Filter Bar */}
             <FilterBar
               participants={participants}

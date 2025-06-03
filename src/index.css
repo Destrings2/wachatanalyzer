@@ -14,9 +14,58 @@
     text-rendering: optimizeLegibility;
   }
   
-  /* Prevent horizontal scroll on mobile */
-  html, body {
+  /* Prevent horizontal scroll on mobile and ensure full height */
+  html {
     overflow-x: hidden;
+    height: 100%;
+    background-color: rgb(249 250 251); /* bg-gray-50 */
+  }
+  
+  @media (prefers-color-scheme: dark) {
+    html {
+      background-color: rgb(17 24 39); /* bg-gray-900 */
+    }
+  }
+  
+  .dark html {
+    background-color: rgb(17 24 39); /* bg-gray-900 */
+  }
+  
+  body {
+    overflow-x: hidden;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    background-color: rgb(249 250 251); /* bg-gray-50 */
+  }
+  
+  @media (prefers-color-scheme: dark) {
+    body {
+      background-color: rgb(17 24 39); /* bg-gray-900 */
+    }
+  }
+  
+  .dark body {
+    background-color: rgb(17 24 39); /* bg-gray-900 */
+  }
+  
+  /* Dynamic viewport height support */
+  @supports (height: 100dvh) {
+    body {
+      min-height: 100dvh;
+    }
+  }
+  
+  /* Ensure root element fills viewport */
+  #root {
+    min-height: 100vh;
+    isolation: isolate;
+  }
+  
+  @supports (height: 100dvh) {
+    #root {
+      min-height: 100dvh;
+    }
   }
   
   /* Better tap highlights */
@@ -31,6 +80,26 @@
 }
 
 @layer utilities {
+  /* Dynamic viewport height utility with fallback */
+  .h-dvh {
+    height: 100vh;
+  }
+  
+  @supports (height: 100dvh) {
+    .h-dvh {
+      height: 100dvh;
+    }
+  }
+  
+  .min-h-dvh {
+    min-height: 100vh;
+  }
+  
+  @supports (height: 100dvh) {
+    .min-h-dvh {
+      min-height: 100dvh;
+    }
+  }
   /* Custom mobile-first responsive utilities */
   .mobile-padding {
     @apply px-4 lg:px-6;
