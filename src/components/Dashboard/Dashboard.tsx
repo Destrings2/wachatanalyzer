@@ -25,6 +25,7 @@ export const Dashboard: React.FC = () => {
 
   const chartTypes = [
     { id: 'home', name: 'Overview', icon: '🏠' },
+    { id: 'search-insights', name: 'Search Insights', icon: '🔍' },
     { id: 'timeline', name: 'Activity Timeline', icon: '📈' },
     { id: 'radial', name: 'Activity Clock', icon: '🕐' },
     { id: 'calls', name: 'Call Analysis', icon: '📞' },
@@ -33,7 +34,6 @@ export const Dashboard: React.FC = () => {
     { id: 'emoji', name: 'Emoji Analysis', icon: '😊' },
     {id: 'wordcloud', name: 'Word Cloud', icon: '📝'},
     { id: 'response', name: 'Response Patterns', icon: '↩️' },
-    { id: 'network', name: 'Chat Network', icon: '🕸️' },
   ];
 
   // Reset indices flag when data changes
