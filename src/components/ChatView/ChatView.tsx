@@ -44,6 +44,8 @@ export const ChatView: React.FC<ChatViewProps> = ({ className, messages }) => {
   // Enhanced scroll management refs
   const scrollDebounceRef = useRef<number | null>(null);
   const isUserScrollingRef = useRef(false);
+  const anchorMessageRef = useRef<{ index: number; offsetTop: number } | null>(null);
+  const lastLoadTimeRef = useRef<number>(0);
 
   // Use messages directly from props (already filtered by Dashboard)
   const filteredMessages = messages;
@@ -120,30 +122,67 @@ export const ChatView: React.FC<ChatViewProps> = ({ className, messages }) => {
   const loadMoreContent = useCallback((direction: 'up' | 'down') => {
     if (isLoadingMore || !scrollContainerRef.current) return;
 
+    // Prevent rapid successive loads (cooldown period)
+    const now = Date.now();
+    if (now - lastLoadTimeRef.current < 500) {
+      return;
+    }
+    lastLoadTimeRef.current = now;
+
     const container = scrollContainerRef.current;
-    const prevScrollHeight = container.scrollHeight;
-    const prevScrollTop = container.scrollTop;
 
     setIsLoadingMore(true);
 
     if (direction === 'up' && visibleRange.start > 0) {
-      // Loading older messages - preserve scroll position
-      const newStart = Math.max(0, visibleRange.start - CHUNK_SIZE);
+      // Find first visible message to use as anchor
+      const messages = container.querySelectorAll('[data-index]');
+      let anchorElement: Element | null = null;
+      let anchorIndex = -1;
+      
+      // Find first message that's at least partially visible
+      for (const msg of messages) {
+        const rect = msg.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        if (rect.top <= containerRect.bottom && rect.bottom >= containerRect.top) {
+          anchorElement = msg;
+          anchorIndex = parseInt(msg.getAttribute('data-index') || '-1');
+          break;
+        }
+      }
 
+      // Store anchor position relative to container
+      if (anchorElement) {
+        const rect = anchorElement.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        anchorMessageRef.current = {
+          index: anchorIndex,
+          offsetTop: rect.top - containerRect.top
+        };
+      }
+
+      // Load older messages
+      const newStart = Math.max(0, visibleRange.start - CHUNK_SIZE);
       setVisibleRange(prev => ({
         start: newStart,
         end: Math.min(chatItems.length, prev.end)
       }));
 
-      // Restore scroll position after DOM updates
-      requestAnimationFrame(() => {
-        if (container) {
-          const newScrollHeight = container.scrollHeight;
-          const heightDiff = newScrollHeight - prevScrollHeight;
-          container.scrollTop = prevScrollTop + heightDiff;
+      // Restore position after DOM update
+      setTimeout(() => {
+        if (anchorMessageRef.current && container) {
+          const targetElement = container.querySelector(`[data-index="${anchorMessageRef.current.index}"]`);
+          if (targetElement) {
+            const rect = targetElement.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+            const currentOffset = rect.top - containerRect.top;
+            const scrollAdjustment = currentOffset - anchorMessageRef.current.offsetTop;
+            container.scrollTop += scrollAdjustment;
+          }
+          anchorMessageRef.current = null;
         }
         setIsLoadingMore(false);
-      });
+      }, 100); // Give more time for mobile browsers to render
+      
     } else if (direction === 'down' && visibleRange.end < chatItems.length) {
       // Loading newer messages - no position adjustment needed
       setVisibleRange(prev => ({
@@ -172,19 +211,19 @@ export const ChatView: React.FC<ChatViewProps> = ({ className, messages }) => {
 
     // Debounced scroll handling
     scrollDebounceRef.current = setTimeout(() => {
-      if (!isLoadingMore) {
+      if (!isLoadingMore && scrollHeight > clientHeight) {
         const scrollPercentage = scrollTop / (scrollHeight - clientHeight);
 
-        // Load more when near edges
-        if (scrollPercentage < 0.15 && visibleRange.start > 0) {
+        // Load more when near edges (more conservative thresholds for mobile)
+        if (scrollPercentage < 0.2 && visibleRange.start > 0) {
           loadMoreContent('up');
-        } else if (scrollPercentage > 0.85 && visibleRange.end < chatItems.length) {
+        } else if (scrollPercentage > 0.8 && visibleRange.end < chatItems.length) {
           loadMoreContent('down');
         }
       }
 
       isUserScrollingRef.current = false;
-    }, 150);
+    }, 200); // Increased debounce for mobile stability
   }, [loadMoreContent, isLoadingMore, visibleRange, chatItems.length]);
 
   // Memory management (separate from scroll events)
@@ -375,6 +414,10 @@ export const ChatView: React.FC<ChatViewProps> = ({ className, messages }) => {
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 p-4 scrollbar-hide"
         onScroll={handleScroll}
+        style={{
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehavior: 'contain'
+        }}
       >
         {/* Loading indicator for older messages */}
         {isLoadingMore && visibleRange.start > 0 && (
