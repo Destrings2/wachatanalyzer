@@ -99,7 +99,7 @@ export const WordCloud: React.FC<WordCloudProps> = ({ analytics, messages = [] }
             word,
             count: 0,
             senders: {},
-            sentiment: sentiment.analyze(word).score // Use sentiment library
+            sentiment: undefined // Will be calculated later if language supports it
           };
         }
         wordStats[word].count++;
@@ -215,31 +215,49 @@ export const WordCloud: React.FC<WordCloudProps> = ({ analytics, messages = [] }
       .slice(0, 20)
       .map(([phrase, count]) => ({ phrase, count }));
 
-    // Calculate overall sentiment statistics
-    const sentimentStats = {
-      positive: Object.values(wordStats).filter(w => w.sentiment && w.sentiment > 0),
-      negative: Object.values(wordStats).filter(w => w.sentiment && w.sentiment < 0),
-      neutral: Object.values(wordStats).filter(w => !w.sentiment || w.sentiment === 0)
+    // Check if sentiment analysis is supported for the detected language
+    const isEnglish = analytics.wordFrequency.languageDetected === 'eng';
+    const supportsSentiment = isEnglish; // Currently only support English
+    
+    let sentimentStats = {
+      positive: [] as typeof wordStats[keyof typeof wordStats][],
+      negative: [] as typeof wordStats[keyof typeof wordStats][],
+      neutral: [] as typeof wordStats[keyof typeof wordStats][]
     };
+    
+    let senderSentiment: Record<string, { total: number; count: number; average: number }> = {};
 
-    // Calculate average sentiment per sender
-    const senderSentiment: Record<string, { total: number; count: number; average: number }> = {};
-    textMessages.forEach(msg => {
-      if (!msg.content) return;
-      const msgSentiment = sentiment.analyze(msg.content);
+    if (supportsSentiment) {
+      // Calculate sentiment for individual words only for English
+      Object.values(wordStats).forEach(wordStat => {
+        wordStat.sentiment = sentiment.analyze(wordStat.word).score;
+      });
       
-      if (!senderSentiment[msg.sender]) {
-        senderSentiment[msg.sender] = { total: 0, count: 0, average: 0 };
-      }
-      
-      senderSentiment[msg.sender].total += msgSentiment.score;
-      senderSentiment[msg.sender].count += 1;
-    });
+      // Calculate overall sentiment statistics only for English
+      sentimentStats = {
+        positive: Object.values(wordStats).filter(w => w.sentiment && w.sentiment > 0),
+        negative: Object.values(wordStats).filter(w => w.sentiment && w.sentiment < 0),
+        neutral: Object.values(wordStats).filter(w => !w.sentiment || w.sentiment === 0)
+      };
 
-    // Calculate averages
-    Object.values(senderSentiment).forEach(stats => {
-      stats.average = stats.count > 0 ? stats.total / stats.count : 0;
-    });
+      // Calculate average sentiment per sender only for English
+      textMessages.forEach(msg => {
+        if (!msg.content) return;
+        const msgSentiment = sentiment.analyze(msg.content);
+        
+        if (!senderSentiment[msg.sender]) {
+          senderSentiment[msg.sender] = { total: 0, count: 0, average: 0 };
+        }
+        
+        senderSentiment[msg.sender].total += msgSentiment.score;
+        senderSentiment[msg.sender].count += 1;
+      });
+
+      // Calculate averages
+      Object.values(senderSentiment).forEach(stats => {
+        stats.average = stats.count > 0 ? stats.total / stats.count : 0;
+      });
+    }
 
     return {
       wordStats,
@@ -249,6 +267,8 @@ export const WordCloud: React.FC<WordCloudProps> = ({ analytics, messages = [] }
       topBigrams,
       sentimentStats,
       senderSentiment,
+      supportsSentiment,
+      detectedLanguage: analytics.wordFrequency.languageDetected,
       totalUniqueWords: Object.keys(wordStats).length,
       averageWordsPerMessage,
       averageWordLength
@@ -258,8 +278,24 @@ export const WordCloud: React.FC<WordCloudProps> = ({ analytics, messages = [] }
   // Use direct ref instead of useD3 to avoid re-renders
   const svgRef = React.useRef<SVGSVGElement>(null);
   
-  // Only render the word cloud when dependencies change
+  // Track if we need to render (for tab switching)
+  const [shouldRender, setShouldRender] = React.useState(viewMode === 'cloud');
+  
+  // Update render flag when switching TO cloud view
   React.useEffect(() => {
+    if (viewMode === 'cloud') {
+      setShouldRender(true);
+    }
+  }, [viewMode]);
+  
+  // Render word cloud
+  React.useEffect(() => {
+    // Only render when on cloud view and when we should render
+    if (viewMode !== 'cloud' || !shouldRender) return;
+    
+    // Reset the render flag to prevent unnecessary re-renders
+    setShouldRender(false);
+    
     const svg = d3.select(svgRef.current);
     if (!svg.node()) return;
 
@@ -464,7 +500,7 @@ export const WordCloud: React.FC<WordCloudProps> = ({ analytics, messages = [] }
       .delay((d, i) => i * 50)
       .style('opacity', 0.8);
 
-  }, [analytics.wordFrequency, isDark]); // Only re-render when word data or theme changes
+  }, [analytics.wordFrequency, isDark, shouldRender]); // Re-render when data changes or switching to cloud view
 
   // Render frequency bar chart
   const renderFrequencyChart = useD3((svg) => {
@@ -767,6 +803,25 @@ export const WordCloud: React.FC<WordCloudProps> = ({ analytics, messages = [] }
               Sentiment Analysis
             </h3>
             
+            {!enhancedWordData.supportsSentiment ? (
+              <div className="text-center py-12">
+                <div className="text-6xl mb-4">🌍</div>
+                <h4 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                  Sentiment Analysis Not Available
+                </h4>
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                  Sentiment analysis is currently only supported for English conversations.
+                </p>
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 inline-block">
+                  <div className="text-blue-800 dark:text-blue-200">
+                    <div className="font-medium">Detected Language: {enhancedWordData.detectedLanguage?.toUpperCase() || 'Unknown'}</div>
+                    <div className="text-sm mt-1">
+                      Try the other analysis modes like Frequency, Trends, or Insights for language-agnostic insights.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Overall Sentiment Stats */}
               <div>
@@ -874,6 +929,7 @@ export const WordCloud: React.FC<WordCloudProps> = ({ analytics, messages = [] }
                 </div>
               </div>
             </div>
+            )}
           </div>
         )}
 
