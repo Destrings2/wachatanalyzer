@@ -30,7 +30,7 @@ jobs:
         run: npm ci
 
       - name: Run tests with coverage
-        run: npm run coverage
+        run: npm run test:coverage
 
       - name: Generate Coverage Summary
         uses: irongut/CodeCoverageSummary@v1.3.0
