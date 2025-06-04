@@ -31,6 +31,19 @@ interface SenderVocabulary {
   distinctiveWords: Array<{ word: string; distinctiveness: number }>;
 }
 
+interface WordCloudNode extends d3.SimulationNodeDatum {
+  word: string;
+  count: number;
+  senders: Record<string, number>;
+  sentiment?: number;
+  category?: string;
+  fontSize: number;
+  color: string;
+  radius: number;
+  textWidth: number;
+  textHeight: number;
+}
+
 // We'll dynamically categorize words based on patterns rather than assuming language
 
 export const WordCloud: React.FC<WordCloudProps> = ({ analytics, messages = [] }) => {
@@ -337,7 +350,7 @@ export const WordCloud: React.FC<WordCloudProps> = ({ analytics, messages = [] }
     ]);
 
     // Create tighter layout with better collision detection
-    const nodes = words.map((word, i) => {
+    const nodes: WordCloudNode[] = words.map((word, i) => {
       const fontSize = fontScale(word.count);
       // More accurate text dimensions
       const textWidth = word.word.length * fontSize * (isMobile ? 0.55 : 0.58);
@@ -358,11 +371,11 @@ export const WordCloud: React.FC<WordCloudProps> = ({ analytics, messages = [] }
     });
 
     // Force simulation that fills the container
-    const simulation = d3.forceSimulation(nodes)
+    const simulation = d3.forceSimulation<WordCloudNode>(nodes)
       .force('charge', d3.forceManyBody().strength(isMobile ? -150 : -200)) // Moderate repulsion to spread out
       .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collision', d3.forceCollide().radius(d => d.radius).strength(0.8))
-      .force('x', d3.forceX().x(d => {
+      .force('collision', d3.forceCollide<WordCloudNode>().radius(d => d.radius).strength(0.8))
+      .force('x', d3.forceX<WordCloudNode>().x(d => {
         // Important words toward center, less important spread out
         const index = words.findIndex(w => w.word === d.word);
         if (index < 5) {
@@ -373,7 +386,7 @@ export const WordCloud: React.FC<WordCloudProps> = ({ analytics, messages = [] }
           return width * 0.1 + Math.random() * width * 0.8;
         }
       }).strength(0.05))
-      .force('y', d3.forceY().y(d => {
+      .force('y', d3.forceY<WordCloudNode>().y(d => {
         const index = words.findIndex(w => w.word === d.word);
         if (index < 5) {
           // Top 5 words stay near center

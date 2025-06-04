@@ -5,10 +5,10 @@ const mockPostMessage = vi.fn()
 const mockAddEventListener = vi.fn()
 
 // Set up global worker environment
-global.self = {
+globalThis.self = {
   postMessage: mockPostMessage,
   addEventListener: mockAddEventListener
-} as typeof globalThis.self
+} as unknown as typeof globalThis.self
 
 // We'll import the worker to set up the environment, then extract the logic for testing
 let parseWhatsAppChatFunction: (content: string) => Promise<void>

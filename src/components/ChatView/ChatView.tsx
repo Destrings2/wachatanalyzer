@@ -66,7 +66,7 @@ const useChatItems = (messages: Message[]): ChatItem[] => {
       items.push({
         type: 'message',
         data: message,
-        id: message.id,
+        id: `msg-${message.timestamp}-${index}`,
         isGrouped,
         isLastInGroup
       });
@@ -97,17 +97,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ className, messages }) => {
       if (!item) return 80;
       return item.type === 'date-separator' ? 40 : 80;
     }, [chatItems]),
-    overscan: 10, // Render 10 items outside visible area
-    measureElement: useCallback((element, entry, instance) => {
-      // Avoid remeasuring when scrolling up to prevent jumps
-      const direction = instance.scrollDirection;
-      if (direction === "backward") {
-        const index = Number(element.getAttribute("data-index"));
-        const cached = instance.itemSizeCache.get(index);
-        if (cached) return cached;
-      }
-      return element.getBoundingClientRect().height;
-    }, []),
+    overscan: 10 // Render 10 items outside visible area
   });
 
   // Jump to specific date

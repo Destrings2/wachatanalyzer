@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import * as d3 from 'd3';
-import { ProcessedAnalytics, Message, FilterState } from '../../types';
+import { ProcessedAnalytics, Message, FilterState, Theme } from '../../types';
 import { useD3 } from '../../hooks/useD3';
 import { useUIStore } from '../../stores/uiStore';
 import { useFilterStore } from '../../stores/filterStore';
@@ -126,7 +126,7 @@ export const SearchInsights: React.FC<SearchInsightsProps> = ({
     longestBurst = Math.max(longestBurst, currentBurstSize);
 
     // Who mentions the search terms most in their messages
-    const mentionFrequency = {};
+    const mentionFrequency: Record<string, number> = {};
     filteredMessages.forEach(msg => {
       mentionFrequency[msg.sender] = (mentionFrequency[msg.sender] || 0) + 1;
     });
@@ -183,8 +183,8 @@ export const SearchInsights: React.FC<SearchInsightsProps> = ({
     const originalTotal = Object.values(originalHourly).reduce((sum, count) => sum + count, 0);
     const filteredTotal = Object.values(filteredHourly).reduce((sum, count) => sum + count, 0);
 
-    const normalizedOriginal = {};
-    const normalizedFiltered = {};
+    const normalizedOriginal: Record<string, number> = {};
+    const normalizedFiltered: Record<string, number> = {};
 
     Object.entries(originalHourly).forEach(([hour, count]) => {
       normalizedOriginal[hour] = originalTotal > 0 ? (count / originalTotal) * 100 : 0;
@@ -778,7 +778,7 @@ interface TemporalPatternChartProps {
   originalPeak: { hour: number; pct: number; count: number };
   filteredPeak: { hour: number; pct: number; count: number };
   patternSimilarity: number;
-  theme: string;
+  theme: Theme;
 }
 
 const TemporalPatternChart: React.FC<TemporalPatternChartProps> = ({

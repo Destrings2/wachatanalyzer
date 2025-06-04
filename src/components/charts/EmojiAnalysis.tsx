@@ -3,7 +3,7 @@ import { ProcessedAnalytics, Message } from '../../types';
 import * as d3 from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useTheme } from '../../hooks/useTheme';
-import { TrendingUp, TrendingDown, Minus, Users, Calendar, Heart } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Users, Heart, X } from 'lucide-react';
 
 interface EmojiAnalysisProps {
   analytics: ProcessedAnalytics;
@@ -57,10 +57,10 @@ const EMOJI_SENTIMENT: Record<string, number> = {
   '😊': 0.8, '😇': 0.9, '🙂': 0.6, '😉': 0.7, '😍': 1.0, '🥰': 1.0, '😘': 0.9,
   '❤️': 1.0, '💕': 1.0, '💖': 1.0, '👍': 0.8, '👏': 0.8, '🎉': 0.9, '🎊': 0.9,
   '✨': 0.8, '💪': 0.7, '🙏': 0.7, '🤝': 0.7, '💯': 0.9, '🔥': 0.8, '⭐': 0.8,
-  
+
   // Neutral (0.5 to -0.5)
   '😐': 0.0, '😑': 0.0, '😶': 0.0, '🤔': 0.0, '🤷': 0.0, '🙄': -0.2,
-  
+
   // Negative (-0.5 to -1.0)
   '😢': -0.7, '😭': -0.9, '😔': -0.6, '😞': -0.6, '😟': -0.5, '🙁': -0.5,
   '😣': -0.6, '😖': -0.7, '😫': -0.8, '😩': -0.7, '😤': -0.6, '😠': -0.8,
@@ -88,18 +88,18 @@ export const EmojiAnalysis: React.FC<EmojiAnalysisProps> = ({ analytics, message
     const normalizeEmoji = (emoji: string): string => {
       // Remove skin tone modifiers but preserve the structure of ZWJ sequences
       let normalized = emoji.replace(/[\u{1F3FB}-\u{1F3FF}]/gu, '');
-      
+
       // Clean up any double ZWJ sequences that might result from modifier removal
       normalized = normalized.replace(/\u200D\u200D+/g, '\u200D');
-      
+
       // Remove any trailing or leading ZWJ sequences
       normalized = normalized.replace(/^\u200D+|\u200D+$/g, '');
-      
+
       // If we ended up with just modifier characters, gender symbols, or ZWJ, filter it out
       if (/^[\u200D\u2640\u2642\uFE0F\u20E3]+$/.test(normalized) || normalized.length === 0) {
         return emoji; // Return original if normalization breaks it
       }
-      
+
       return normalized;
     };
 
@@ -239,7 +239,7 @@ export const EmojiAnalysis: React.FC<EmojiAnalysisProps> = ({ analytics, message
       .attr('opacity', 0.8)
       .on('mouseover', function(event, d) {
         d3.select(this).attr('opacity', 1);
-        
+
         // Tooltip
         const tooltip = d3.select('body').append('div')
           .attr('class', 'tooltip')
@@ -304,7 +304,7 @@ export const EmojiAnalysis: React.FC<EmojiAnalysisProps> = ({ analytics, message
       .attr('opacity', 0.8)
       .on('mouseover', function(event, d) {
         d3.select(this).attr('opacity', 1);
-        
+
         // Show category emojis
         const tooltip = d3.select('body').append('div')
           .attr('class', 'tooltip')
@@ -376,8 +376,8 @@ export const EmojiAnalysis: React.FC<EmojiAnalysisProps> = ({ analytics, message
       emojiRate,
       messagesWithEmoji,
       maxEmojiSender,
-      uniqueRatio: analytics.emojiAnalysis.totalEmojis > 0 
-        ? analytics.emojiAnalysis.uniqueEmojis / analytics.emojiAnalysis.totalEmojis 
+      uniqueRatio: analytics.emojiAnalysis.totalEmojis > 0
+        ? analytics.emojiAnalysis.uniqueEmojis / analytics.emojiAnalysis.totalEmojis
         : 0
     };
   }, [analytics, messages]);
@@ -495,8 +495,8 @@ export const EmojiAnalysis: React.FC<EmojiAnalysisProps> = ({ analytics, message
                 {enhancedEmojiData.categories.map((category) => (
                   <div key={category.name} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                     <div className="flex items-center gap-3">
-                      <div 
-                        className="w-4 h-4 rounded-full" 
+                      <div
+                        className="w-4 h-4 rounded-full"
                         style={{ backgroundColor: category.color }}
                       />
                       <span className="font-medium text-gray-900 dark:text-white">
@@ -523,13 +523,13 @@ export const EmojiAnalysis: React.FC<EmojiAnalysisProps> = ({ analytics, message
             </h3>
             <div className="space-y-4">
               {enhancedEmojiData.sentiment.bySender.map((sender) => {
-                const sentimentColor = sender.score > 0.2 ? 'green' : 
+                const sentimentColor = sender.score > 0.2 ? 'green' :
                                      sender.score < -0.2 ? 'red' : 'gray';
                 const sentimentEmoji = sender.score > 0.5 ? '😄' :
                                      sender.score > 0.2 ? '🙂' :
                                      sender.score > -0.2 ? '😐' :
                                      sender.score > -0.5 ? '😔' : '😢';
-                
+
                 return (
                   <div key={sender.sender} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                     <div className="flex items-center gap-3">
@@ -540,9 +540,9 @@ export const EmojiAnalysis: React.FC<EmojiAnalysisProps> = ({ analytics, message
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="w-32 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                        <div 
+                        <div
                           className={`h-2 rounded-full bg-${sentimentColor}-500`}
-                          style={{ 
+                          style={{
                             width: `${Math.abs(sender.score) * 100}%`,
                             marginLeft: sender.score < 0 ? `${(1 - Math.abs(sender.score)) * 100}%` : '0'
                           }}
@@ -569,10 +569,10 @@ export const EmojiAnalysis: React.FC<EmojiAnalysisProps> = ({ analytics, message
                 const count = enhancedEmojiData.hourlyDistribution[hour] || 0;
                 const maxCount = Math.max(...Object.values(enhancedEmojiData.hourlyDistribution));
                 const intensity = maxCount > 0 ? count / maxCount : 0;
-                
+
                 return (
                   <div key={hour} className="col-span-1">
-                    <div 
+                    <div
                       className="aspect-square rounded flex items-center justify-center text-xs font-medium"
                       style={{
                         backgroundColor: `rgba(59, 130, 246, ${intensity})`,
@@ -601,7 +601,7 @@ export const EmojiAnalysis: React.FC<EmojiAnalysisProps> = ({ analytics, message
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {enhancedEmojiData.combinations.map((combo, index) => (
-              <div 
+              <div
                 key={index}
                 className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
               >

@@ -4,7 +4,7 @@ import clsx from 'clsx';
 interface SkeletonProps {
   className?: string;
   animate?: boolean;
-  as?: keyof JSX.IntrinsicElements;
+  as?: React.ElementType;
   style?: React.CSSProperties;
 }
 

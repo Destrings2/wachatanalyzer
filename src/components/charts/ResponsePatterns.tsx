@@ -1,22 +1,21 @@
 import React, { useMemo, useState } from 'react';
 import * as d3 from 'd3';
-import { ProcessedAnalytics, Message } from '../../types';
+import { ProcessedAnalytics, Message, Theme } from '../../types';
 import { useD3 } from '../../hooks/useD3';
 import { useTheme } from '../../hooks/useTheme';
 import { useUIStore } from '../../stores/uiStore';
 import { getSenderColor, getChartColors } from '../../utils/chartUtils';
-import { format, differenceInMinutes, differenceInHours, isSameDay, parseISO } from 'date-fns';
-import { 
-  Clock, 
-  MessageCircle, 
-  Users, 
-  TrendingUp, 
-  Zap, 
-  Target, 
-  BarChart3,
+import { differenceInMinutes, differenceInHours, isSameDay } from 'date-fns';
+import {
+  Clock,
+  MessageCircle,
+  Users,
+  TrendingUp,
+  Zap,
+  Target,
   Network,
   Timer,
-  Check 
+  Check
 } from 'lucide-react';
 
 interface ResponsePatternsProps {
@@ -62,10 +61,10 @@ interface ResponseStats {
   avgResponseTime: number;
 }
 
-export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({ 
-  analytics, 
-  messages = [], 
-  isLoading = false 
+export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
+  analytics,
+  messages = [],
+  isLoading = false
 }) => {
   const { theme } = useTheme();
   const { chartSettings, updateChartSettings } = useUIStore();
@@ -130,11 +129,11 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
       // Different sender = potential response
       if (currentMsg.sender !== prevMsg.sender) {
         const responseTimeMinutes = differenceInMinutes(currentTime, prevTime);
-        
+
         // Consider responses within 24 hours (1440 minutes)
         if (responseTimeMinutes <= 1440) {
           const conversationGap = responseTimeMinutes > 60; // More than 1 hour is considered a gap
-          
+
           responseData.push({
             responseTimeMinutes,
             responder: currentMsg.sender,
@@ -198,11 +197,11 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
 
     allSenders.forEach(sender => {
       doubleMessages[sender] = senderStats[sender].doubles;
-      avgResponseTimes[sender] = senderStats[sender].responses > 0 
-        ? senderStats[sender].totalResponseTime / senderStats[sender].responses 
+      avgResponseTimes[sender] = senderStats[sender].responses > 0
+        ? senderStats[sender].totalResponseTime / senderStats[sender].responses
         : 0;
-      responseRates[sender] = senderStats[sender].messages > 0 
-        ? (senderStats[sender].responses / senderStats[sender].messages) * 100 
+      responseRates[sender] = senderStats[sender].messages > 0
+        ? (senderStats[sender].responses / senderStats[sender].messages) * 100
         : 0;
       conversationEnders[sender] = senderStats[sender].ends;
     });
@@ -213,8 +212,8 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
       .sort((a, b) => a.avgTime - b.avgTime);
 
     const totalResponses = responseData.length;
-    const avgResponseTime = responseData.length > 0 
-      ? responseData.reduce((sum, r) => sum + r.responseTimeMinutes, 0) / responseData.length 
+    const avgResponseTime = responseData.length > 0
+      ? responseData.reduce((sum, r) => sum + r.responseTimeMinutes, 0) / responseData.length
       : 0;
 
     return {
@@ -242,7 +241,7 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
   // Get top stats for overview
   const topStats = useMemo(() => {
     const { fastestResponders, conversationStarters, responsePairs, doubleMessages } = responseStats;
-    
+
     return {
       fastestResponder: fastestResponders[0],
       topStarter: conversationStarters[0],
@@ -255,19 +254,19 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
   const ResponseTimeHistogram: React.FC<{
     responseData: ResponseData[];
     separateBySender: boolean;
-    theme: string;
+    theme: Theme;
   }> = ({ responseData, separateBySender, theme }) => {
     const ref = useD3((svg) => {
       // Get responsive dimensions
       const containerElement = svg.node()?.parentElement;
       const availableWidth = containerElement?.clientWidth || 800;
       const isMobile = availableWidth < 768;
-      
-      const margin = { 
-        top: 20, 
-        right: separateBySender ? (isMobile ? 20 : 150) : (isMobile ? 10 : 30), 
-        bottom: isMobile ? 80 : 60, 
-        left: isMobile ? 40 : 60 
+
+      const margin = {
+        top: 20,
+        right: separateBySender ? (isMobile ? 20 : 150) : (isMobile ? 10 : 30),
+        bottom: isMobile ? 80 : 60,
+        left: isMobile ? 40 : 60
       };
       const containerWidth = Math.min(availableWidth - 20, isMobile ? 380 : 800);
       const width = containerWidth - margin.left - margin.right;
@@ -287,11 +286,11 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
       // Create time bins (logarithmic scale for better distribution)
       const bins = [0, 1, 5, 15, 60, 240, 1440]; // minutes: <1min, 1-5min, 5-15min, 15min-1hr, 1-4hr, 4hr+
       const binLabels = ['< 1min', '1-5min', '5-15min', '15min-1hr', '1-4hr', '4hr+'];
-      
+
       const binData = bins.slice(0, -1).map((minTime, i) => {
         const maxTime = bins[i + 1];
         const responsesInBin = responseData.filter(r => r.responseTimeMinutes >= minTime && r.responseTimeMinutes < maxTime);
-        
+
         if (separateBySender) {
           const senderCounts: Record<string, number> = {};
           responsesInBin.forEach(r => {
@@ -372,14 +371,14 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
         // Stacked bars by sender
         binData.forEach(binItem => {
           let currentY = height;
-          
+
           allSenders.forEach((sender, senderIndex) => {
             const senderCount = binItem.senderCounts[sender] || 0;
             if (senderCount === 0) return;
-            
+
             const senderColor = getSenderColor(senderIndex, theme);
             const barHeight = height - y(senderCount);
-            
+
             g.append('rect')
               .attr('x', x(binItem.bin) || 0)
               .attr('width', x.bandwidth())
@@ -409,7 +408,7 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
               .delay(senderIndex * 100)
               .attr('y', currentY - barHeight)
               .attr('height', barHeight);
-            
+
             currentY -= barHeight;
           });
         });
@@ -486,19 +485,19 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
   const HourlyResponseChart: React.FC<{
     responseData: ResponseData[];
     separateBySender: boolean;
-    theme: string;
+    theme: Theme;
   }> = ({ responseData, separateBySender, theme }) => {
     const ref = useD3((svg) => {
       // Get responsive dimensions
       const containerElement = svg.node()?.parentElement;
       const availableWidth = containerElement?.clientWidth || 800;
       const isMobile = availableWidth < 768;
-      
-      const margin = { 
-        top: 20, 
-        right: separateBySender ? (isMobile ? 20 : 150) : (isMobile ? 10 : 30), 
-        bottom: isMobile ? 80 : 60, 
-        left: isMobile ? 40 : 60 
+
+      const margin = {
+        top: 20,
+        right: separateBySender ? (isMobile ? 20 : 150) : (isMobile ? 10 : 30),
+        bottom: isMobile ? 80 : 60,
+        left: isMobile ? 40 : 60
       };
       const containerWidth = Math.min(availableWidth - 20, isMobile ? 380 : 800);
       const width = containerWidth - margin.left - margin.right;
@@ -518,7 +517,7 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
       // Group responses by hour
       const hourlyData = Array.from({ length: 24 }, (_, hour) => {
         const responsesInHour = responseData.filter(r => r.timestamp.getHours() === hour);
-        
+
         if (separateBySender) {
           const senderCounts: Record<string, number> = {};
           responsesInHour.forEach(r => {
@@ -528,8 +527,8 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
             hour,
             total: responsesInHour.length,
             senderCounts,
-            avgResponseTime: responsesInHour.length > 0 
-              ? responsesInHour.reduce((sum, r) => sum + r.responseTimeMinutes, 0) / responsesInHour.length 
+            avgResponseTime: responsesInHour.length > 0
+              ? responsesInHour.reduce((sum, r) => sum + r.responseTimeMinutes, 0) / responsesInHour.length
               : 0
           };
         } else {
@@ -537,8 +536,8 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
             hour,
             total: responsesInHour.length,
             senderCounts: {},
-            avgResponseTime: responsesInHour.length > 0 
-              ? responsesInHour.reduce((sum, r) => sum + r.responseTimeMinutes, 0) / responsesInHour.length 
+            avgResponseTime: responsesInHour.length > 0
+              ? responsesInHour.reduce((sum, r) => sum + r.responseTimeMinutes, 0) / responsesInHour.length
               : 0
           };
         }
@@ -623,14 +622,14 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
         // Stacked bars by sender
         hourlyData.forEach(hourItem => {
           let currentY = height;
-          
+
           allSenders.forEach((sender, senderIndex) => {
             const senderCount = hourItem.senderCounts[sender] || 0;
             if (senderCount === 0) return;
-            
+
             const senderColor = getSenderColor(senderIndex, theme);
             const barHeight = height - y(senderCount);
-            
+
             g.append('rect')
               .attr('x', x(hourItem.hour.toString()) || 0)
               .attr('width', x.bandwidth())
@@ -665,7 +664,7 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
               .delay(senderIndex * 100)
               .attr('y', currentY - barHeight)
               .attr('height', barHeight);
-            
+
             currentY -= barHeight;
           });
         });
@@ -746,7 +745,7 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
   // Response Pair Matrix Component
   const ResponsePairMatrix: React.FC<{
     responsePairs: ResponsePairStats[];
-    theme: string;
+    theme: Theme;
   }> = ({ responsePairs, theme }) => {
     const ref = useD3((svg) => {
       svg.selectAll('*').remove();
@@ -786,7 +785,7 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
 
       const maxCount = Math.max(...matrixData.map(d => d.count));
       if (maxCount === 0) return; // No data to display
-      
+
       const cellSize = Math.min(60, Math.max(40, 500 / allSenders.length));
       const margin = { top: 120, right: 100, bottom: 80, left: 120 };
       const width = allSenders.length * cellSize + margin.left + margin.right;
@@ -1080,7 +1079,7 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
             <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
               Response Patterns Overview
             </h3>
-            
+
             {responseStats.totalResponses === 0 ? (
               <div className="text-center py-12">
                 <div className="text-6xl mb-4">💬</div>
@@ -1199,7 +1198,7 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
                             </span>
                           </div>
                           <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                            <div 
+                            <div
                               className="bg-blue-500 h-2 rounded-full transition-all duration-300"
                               style={{ width: `${Math.min(100, rate)}%` }}
                             />
@@ -1219,7 +1218,7 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
             <h3 className="text-lg font-semibold mb-6 text-gray-900 dark:text-white">
               Response Timeline Analysis
             </h3>
-            
+
             {responseStats.responseData.length === 0 ? (
               <div className="text-center py-12">
                 <div className="text-6xl mb-4">📈</div>
@@ -1235,7 +1234,7 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
                 {/* Response Time Distribution Histogram */}
                 <div>
                   <h4 className="font-medium text-gray-900 dark:text-white mb-4">Response Time Distribution</h4>
-                  <ResponseTimeHistogram 
+                  <ResponseTimeHistogram
                     responseData={responseStats.responseData}
                     separateBySender={chartSettings.separateMessagesBySender}
                     theme={theme}
@@ -1245,7 +1244,7 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
                 {/* Response Activity by Hour */}
                 <div>
                   <h4 className="font-medium text-gray-900 dark:text-white mb-4">Response Activity by Hour</h4>
-                  <HourlyResponseChart 
+                  <HourlyResponseChart
                     responseData={responseStats.responseData}
                     separateBySender={chartSettings.separateMessagesBySender}
                     theme={theme}
@@ -1261,7 +1260,7 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
             <h3 className="text-lg font-semibold mb-6 text-gray-900 dark:text-white">
               Response Pair Analysis
             </h3>
-            
+
             {responseStats.responsePairs.length === 0 ? (
               <div className="text-center py-12">
                 <div className="text-6xl mb-4">🔗</div>
@@ -1277,7 +1276,7 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
                 {/* Response Matrix */}
                 <div>
                   <h4 className="font-medium text-gray-900 dark:text-white mb-4">Response Interaction Matrix</h4>
-                  <ResponsePairMatrix 
+                  <ResponsePairMatrix
                     responsePairs={responseStats.responsePairs}
                     theme={theme}
                   />
@@ -1311,10 +1310,10 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
                           <span className="font-mono">{formatResponseTime(pair.avgResponseTime)}</span>
                         </div>
                         <div className="mt-2 w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                          <div 
+                          <div
                             className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                            style={{ 
-                              width: `${Math.min(100, (pair.count / responseStats.responsePairs[0]?.count || 1) * 100)}%` 
+                            style={{
+                              width: `${Math.min(100, (pair.count / responseStats.responsePairs[0]?.count || 1) * 100)}%`
                             }}
                           />
                         </div>
@@ -1332,7 +1331,7 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
             <h3 className="text-lg font-semibold mb-6 text-gray-900 dark:text-white">
               Conversation Flow Analysis
             </h3>
-            
+
             {responseStats.responseData.length === 0 ? (
               <div className="text-center py-12">
                 <div className="text-6xl mb-4">🌊</div>
@@ -1411,10 +1410,10 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
                               </span>
                               <div className="flex items-center gap-2">
                                 <div className="w-24 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                                  <div 
+                                  <div
                                     className="bg-purple-500 h-2 rounded-full"
-                                    style={{ 
-                                      width: `${Math.min(100, (count / Math.max(...Object.values(responseStats.doubleMessages))) * 100)}%` 
+                                    style={{
+                                      width: `${Math.min(100, (count / Math.max(...Object.values(responseStats.doubleMessages))) * 100)}%`
                                     }}
                                   />
                                 </div>
@@ -1442,10 +1441,10 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
                               </span>
                               <div className="flex items-center gap-2">
                                 <div className="w-24 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                                  <div 
+                                  <div
                                     className="bg-red-500 h-2 rounded-full"
-                                    style={{ 
-                                      width: `${Math.min(100, (count / Math.max(...Object.values(responseStats.conversationEnders))) * 100)}%` 
+                                    style={{
+                                      width: `${Math.min(100, (count / Math.max(...Object.values(responseStats.conversationEnders))) * 100)}%`
                                     }}
                                   />
                                 </div>
