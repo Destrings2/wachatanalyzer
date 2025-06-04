@@ -8,7 +8,8 @@
 
 A beautiful, privacy-first web application for analyzing your WhatsApp chat exports. Get insights into your conversations with interactive visualizations, activity patterns, emoji usage, and much more!
 
-![image](https://github.com/user-attachments/assets/2759aeaa-f56f-4b88-89a4-44b044548778)
+![image](https://github.com/user-attachments/assets/e623b153-efda-471b-8943-b4b0301130fc)
+
 
 ## Features
 
