@@ -204,7 +204,7 @@ describe('useTheme', () => {
     const originalMatchMedia = window.matchMedia;
     
     // Remove matchMedia
-    delete (window as any).matchMedia;
+    delete (window as unknown as { matchMedia?: unknown }).matchMedia;
     
     // Should not throw
     expect(() => {

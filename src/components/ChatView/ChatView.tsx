@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import React, { useMemo, useState, useCallback, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { startOfDay, isSameDay } from 'date-fns';
 import { useChatStore } from '../../stores/chatStore';
@@ -103,7 +103,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ className, messages }) => {
   // Jump to specific date
   const jumpToDate = useCallback((date: Date) => {
     // Find the first message of the selected date (not just the separator)
-    const targetIndex = chatItems.findIndex((item, index) => {
+    const targetIndex = chatItems.findIndex((item) => {
       if (item.type === 'message') {
         const message = item.data as Message;
         return isSameDay(message.datetime, date);

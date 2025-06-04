@@ -1,8 +1,8 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ProcessedAnalytics } from '../../types';
 import { format, startOfDay, eachDayOfInterval, isValid } from 'date-fns';
 import { useChatStore } from '../../stores/chatStore';
-import { Phone, Video, Clock, Target, TrendingUp, Calendar, Users, BarChart3, Info } from 'lucide-react';
+import { Phone, Video, Clock, Target, TrendingUp, Users, BarChart3, Info } from 'lucide-react';
 import clsx from 'clsx';
 
 interface CallAnalysisProps {
@@ -29,7 +29,7 @@ const Tooltip: React.FC<{ content: string; children: React.ReactNode; className?
 
 // Animated metric card
 const MetricCard: React.FC<{
-  icon: React.ComponentType<any>;
+  icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: string;
   color: string;

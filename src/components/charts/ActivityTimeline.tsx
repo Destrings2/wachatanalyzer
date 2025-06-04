@@ -13,6 +13,12 @@ interface ActivityTimelineProps {
   settings: ChartSettings;
 }
 
+interface DataPoint {
+  date: Date;
+  count: number;
+  [key: string]: Date | number;
+}
+
 export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, settings }) => {
   const { theme, updateChartSettings } = useUIStore();
   const [chartType, setChartType] = useState<'line' | 'bar'>('line');
@@ -176,7 +182,6 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, s
         const visibleDomain = x.domain();
         const visibleData = data.filter(d => d.date >= visibleDomain[0] && d.date <= visibleDomain[1]);
         const barGroupWidth = Math.min(width / Math.max(visibleData.length, 1) * 0.8, 80); // Cap max width at 80px
-        const barPadding = width / data.length * 0.2;
 
         if (settings.separateMessagesBySender && allSenders.length > 0) {
           // Side-by-side bars for multiple senders
@@ -526,13 +531,13 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ analytics, s
             const barWidth = barGroupWidth / allSenders.length;
             allSenders.forEach((_, index) => {
               focus.selectAll(`.bar-${index}`)
-                .attr('x', (d: any) => x(d.date) - barGroupWidth / 2 + index * barWidth)
+                .attr('x', (d: unknown) => x((d as DataPoint).date) - barGroupWidth / 2 + index * barWidth)
                 .attr('width', barWidth * 0.9);
             });
           } else {
             // Update simple bars
             focus.selectAll('.bar')
-              .attr('x', (d: any) => x(d.date) - barGroupWidth / 2)
+              .attr('x', (d: unknown) => x((d as DataPoint).date) - barGroupWidth / 2)
               .attr('width', barGroupWidth);
           }
         } else {

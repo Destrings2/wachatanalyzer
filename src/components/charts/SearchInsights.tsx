@@ -1,12 +1,12 @@
 import React, { useMemo } from 'react';
 import * as d3 from 'd3';
-import { ProcessedAnalytics, Message, FilterState, Theme } from '../../types';
+import { ProcessedAnalytics, Message, Theme } from '../../types';
 import { useD3 } from '../../hooks/useD3';
 import { useUIStore } from '../../stores/uiStore';
 import { useFilterStore } from '../../stores/filterStore';
 import { useChatStore } from '../../stores/chatStore';
 import { getSenderColor, getChartColors } from '../../utils/chartUtils';
-import { format, differenceInDays } from 'date-fns';
+import { differenceInDays } from 'date-fns';
 import { Search, Users, Clock, MessageSquare, TrendingUp, Target, Zap } from 'lucide-react';
 
 interface SearchInsightsProps {
@@ -835,7 +835,7 @@ const TemporalPatternChart: React.FC<TemporalPatternChartProps> = ({
       const barWidth = chartWidth / 24 * 0.8;
 
       // Create grouped bars for comparison
-      data.forEach((d, i) => {
+      data.forEach((d) => {
         const x = xScale(d.hour);
         const halfBarWidth = barWidth / 2;
 

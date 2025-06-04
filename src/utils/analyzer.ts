@@ -211,7 +211,7 @@ function normalizeEmoji(emoji: string): string {
   normalized = normalized.replace(/^\u200D+|\u200D+$/g, '');
   
   // If we ended up with just modifier characters, gender symbols, or ZWJ, filter it out
-  if (/^[\u200D\u2640\u2642\uFE0F\u20E3]+$/.test(normalized) || normalized.length === 0) {
+  if (/^(\u200D|\u2640|\u2642|\uFE0F|\u20E3)+$/.test(normalized) || normalized.length === 0) {
     return emoji; // Return original if normalization breaks it
   }
   

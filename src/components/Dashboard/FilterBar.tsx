@@ -340,7 +340,6 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
                 currentRange={filterDateRange}
                 onApply={handleDateRangeApply}
                 onReset={handleDateRangeReset}
-                onClose={() => setShowDatePicker(false)}
               />
             )}
           </div>

@@ -150,7 +150,7 @@ describe('useD3', () => {
 
     // Use useD3 and manually call render function to test behavior
     const { result } = renderHook(() => useD3(renderChart, [1]));
-    (result.current as any).current = svg;
+    (result.current as React.MutableRefObject<SVGSVGElement | null>).current = svg;
 
     // Call render function directly to create elements
     const d3Svg = d3.select(svg);

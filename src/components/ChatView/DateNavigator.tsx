@@ -11,11 +11,6 @@ interface DateNavigatorProps {
   selectedDate?: Date | null;
 }
 
-interface DayActivity {
-  date: Date;
-  messageCount: number;
-  hasActivity: boolean;
-}
 
 export const DateNavigator: React.FC<DateNavigatorProps> = ({
   messages,

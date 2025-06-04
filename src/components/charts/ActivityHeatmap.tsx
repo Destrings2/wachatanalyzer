@@ -83,7 +83,7 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ analytics, mes
 
     // Get unfiltered daily totals for normalization from raw analytics
     if (searchKeyword && normalizeSearch && rawAnalytics) {
-      Object.entries(rawAnalytics.timePatterns.dailyActivity).forEach(([_sender, dailyData]) => {
+      Object.entries(rawAnalytics.timePatterns.dailyActivity).forEach(([, dailyData]) => {
         Object.entries(dailyData).forEach(([date, count]) => {
           const msgDate = new Date(date);
           const msgYear = getYear(msgDate);

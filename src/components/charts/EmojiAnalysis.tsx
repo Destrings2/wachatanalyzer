@@ -77,7 +77,7 @@ export const EmojiAnalysis: React.FC<EmojiAnalysisProps> = ({ analytics, message
   // Enhanced emoji analysis
   const enhancedEmojiData = useMemo(() => {
     // Category analysis
-    const categories: EmojiCategory[] = Object.entries(EMOJI_CATEGORIES).map(([key, category]) => ({
+    const categories: EmojiCategory[] = Object.entries(EMOJI_CATEGORIES).map(([, category]) => ({
       name: category.name,
       color: category.color,
       emojis: [],
@@ -96,7 +96,7 @@ export const EmojiAnalysis: React.FC<EmojiAnalysisProps> = ({ analytics, message
       normalized = normalized.replace(/^\u200D+|\u200D+$/g, '');
 
       // If we ended up with just modifier characters, gender symbols, or ZWJ, filter it out
-      if (/^[\u200D\u2640\u2642\uFE0F\u20E3]+$/.test(normalized) || normalized.length === 0) {
+      if (/^(\u200D|\u2640|\u2642|\uFE0F|\u20E3)+$/.test(normalized) || normalized.length === 0) {
         return emoji; // Return original if normalization breaks it
       }
 
@@ -263,7 +263,7 @@ export const EmojiAnalysis: React.FC<EmojiAnalysisProps> = ({ analytics, message
         d3.select(this).attr('opacity', 0.8);
         d3.selectAll('.tooltip').remove();
       })
-      .on('click', (event, d) => {
+      .on('click', (_, d) => {
         setSelectedEmoji(d.emoji);
       })
       .transition()

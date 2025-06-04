@@ -5,7 +5,7 @@ import { useD3 } from '../../hooks/useD3';
 import { useTheme } from '../../hooks/useTheme';
 import { useUIStore } from '../../stores/uiStore';
 import { getSenderColor } from '../../utils/chartUtils';
-import { BookOpen, TrendingUp, Users, Brain, Clock, Award, Zap, MessageCircle, Check } from 'lucide-react';
+import { BookOpen, TrendingUp, Users, Brain, Award, Zap, MessageCircle, Check } from 'lucide-react';
 import Sentiment from 'sentiment';
 
 interface WordCloudProps {
@@ -53,7 +53,6 @@ export const WordCloud: React.FC<WordCloudProps> = ({ analytics, messages = [] }
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
 
   const isDark = theme === 'dark';
-  const sentiment = new Sentiment();
   
   // Create a ref to store the latest click handler without causing re-renders
   const clickHandlerRef = React.useRef((word: string) => {
@@ -241,9 +240,12 @@ export const WordCloud: React.FC<WordCloudProps> = ({ analytics, messages = [] }
       neutral: [] as typeof wordStats[keyof typeof wordStats][]
     };
     
-    let senderSentiment: Record<string, { total: number; count: number; average: number }> = {};
+    const senderSentiment: Record<string, { total: number; count: number; average: number }> = {};
 
     if (supportsSentiment) {
+      // Create sentiment analyzer inside useMemo to avoid re-creation
+      const sentiment = new Sentiment();
+      
       // Calculate sentiment for individual words only for English
       Object.values(wordStats).forEach(wordStat => {
         wordStat.sentiment = sentiment.analyze(wordStat.word).score;
@@ -289,7 +291,7 @@ export const WordCloud: React.FC<WordCloudProps> = ({ analytics, messages = [] }
       averageWordsPerMessage,
       averageWordLength
     };
-  }, [messages]);
+  }, [messages, analytics.wordFrequency.languageDetected]);
 
   // Use direct ref instead of useD3 to avoid re-renders
   const svgRef = React.useRef<SVGSVGElement>(null);
@@ -498,7 +500,7 @@ export const WordCloud: React.FC<WordCloudProps> = ({ analytics, messages = [] }
             .style('top', Math.max(8, top) + 'px');
         }
       })
-      .on('mouseout', function(event, d) {
+      .on('mouseout', function(_, d) {
         d3.select(this)
           .transition()
           .duration(150)
@@ -507,7 +509,7 @@ export const WordCloud: React.FC<WordCloudProps> = ({ analytics, messages = [] }
           .attr('font-size', `${d.fontSize}px`);
         d3.selectAll('.word-cloud-tooltip').remove();
       })
-      .on('click', (event, d) => {
+      .on('click', (_, d) => {
         clickHandlerRef.current(d.word);
       });
 
@@ -516,10 +518,10 @@ export const WordCloud: React.FC<WordCloudProps> = ({ analytics, messages = [] }
       .style('opacity', 0)
       .transition()
       .duration(1000)
-      .delay((d, i) => i * 50)
+      .delay((_, i) => i * 50)
       .style('opacity', 0.8);
 
-  }, [enhancedWordData.wordStats, isDark, shouldRender]); // Re-render when filtered data changes or switching to cloud view
+  }, [enhancedWordData.wordStats, isDark, shouldRender, analytics.wordFrequency.topWords, viewMode]); // Re-render when filtered data changes or switching to cloud view
 
   // Render frequency bar chart
   const renderFrequencyChart = useD3((svg) => {
@@ -846,7 +848,7 @@ export const WordCloud: React.FC<WordCloudProps> = ({ analytics, messages = [] }
               Vocabulary Analysis by Participant
             </h3>
             <div className="space-y-4">
-              {enhancedWordData.senderVocabularies.map((vocab, index) => (
+              {enhancedWordData.senderVocabularies.map((vocab) => (
                 <div key={vocab.sender} className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="font-semibold text-gray-900 dark:text-white">

@@ -62,9 +62,7 @@ interface ResponseStats {
 }
 
 export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
-  analytics,
-  messages = [],
-  isLoading = false
+  messages = []
 }) => {
   const { theme } = useTheme();
   const { chartSettings, updateChartSettings } = useUIStore();
@@ -871,7 +869,7 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
         .enter().append('text')
         .attr('class', 'row-label')
         .attr('x', -10)
-        .attr('y', (d, i) => i * cellSize + cellSize / 2)
+        .attr('y', (_, i) => i * cellSize + cellSize / 2)
         .attr('text-anchor', 'end')
         .attr('dy', '0.35em')
         .style('fill', colors.text)
@@ -884,7 +882,7 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
         .data(allSenders)
         .enter().append('text')
         .attr('class', 'col-label')
-        .attr('x', (d, i) => i * cellSize + cellSize / 2)
+        .attr('x', (_, i) => i * cellSize + cellSize / 2)
         .attr('y', -10)
         .attr('text-anchor', 'middle')
         .attr('dy', '0.35em')
@@ -1159,7 +1157,7 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
                     Most Interactive Pairs
                   </h4>
                   <div className="space-y-3">
-                    {responseStats.responsePairs.slice(0, 5).map((pair, index) => (
+                    {responseStats.responsePairs.slice(0, 5).map((pair) => (
                       <div key={`${pair.from}-${pair.to}`} className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <div className="flex items-center justify-between mb-1">
                           <div className="text-sm font-medium text-gray-900 dark:text-white">

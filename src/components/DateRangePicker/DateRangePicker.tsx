@@ -28,15 +28,13 @@ interface DateRangePickerProps {
   currentRange: [Date, Date] | null;
   onApply: (range: [Date, Date]) => void;
   onReset: () => void;
-  onClose: () => void;
 }
 
 export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   dateRange,
   currentRange,
   onApply,
-  onReset,
-  onClose
+  onReset
 }) => {
   const [currentViewDate, setCurrentViewDate] = useState(
     currentRange ? new Date(currentRange[0]) : new Date(dateRange[0])

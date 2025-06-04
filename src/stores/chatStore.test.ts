@@ -157,7 +157,7 @@ describe('chatStore', () => {
       const file = createMockFile('chat content');
 
       // Mock a delayed response
-      let resolveParser: (value: any) => void;
+      let resolveParser: (value: ParsedChat) => void;
       const parserPromise = new Promise<ParsedChat>(resolve => {
         resolveParser = resolve;
       });
@@ -390,7 +390,7 @@ describe('chatStore', () => {
     it('maintains state consistency during loading', async () => {
       const file = createMockFile('content');
 
-      let resolveParser: (value: any) => void;
+      let resolveParser: (value: ParsedChat) => void;
       const parserPromise = new Promise<ParsedChat>(resolve => {
         resolveParser = resolve;
       });
