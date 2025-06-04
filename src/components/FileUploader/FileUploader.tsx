@@ -23,7 +23,7 @@ export const FileUploader: React.FC = () => {
 
     const files = Array.from(e.dataTransfer.files);
     const txtFile = files.find(file => file.name.endsWith('.txt'));
-    
+
     if (txtFile) {
       await loadChatFile(txtFile);
     }
@@ -67,12 +67,12 @@ export const FileUploader: React.FC = () => {
             disabled={isLoading}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           />
-          
+
           <div className="flex flex-col items-center space-y-4 lg:space-y-6">
             <div className={clsx(
               'p-4 lg:p-6 rounded-full transition-colors',
-              isDragging 
-                ? 'bg-blue-100 dark:bg-blue-800' 
+              isDragging
+                ? 'bg-blue-100 dark:bg-blue-800'
                 : 'bg-gray-100 dark:bg-gray-700'
             )}>
               {isLoading ? (
@@ -80,13 +80,13 @@ export const FileUploader: React.FC = () => {
               ) : (
                 <Upload className={clsx(
                   'w-10 h-10 lg:w-12 lg:h-12 transition-colors',
-                  isDragging 
-                    ? 'text-blue-600 dark:text-blue-400' 
+                  isDragging
+                    ? 'text-blue-600 dark:text-blue-400'
                     : 'text-gray-600 dark:text-gray-400'
                 )} />
               )}
             </div>
-            
+
             <div className="px-4">
               <p className="text-base lg:text-lg font-medium text-gray-900 dark:text-white mb-1">
                 {isLoading ? 'Processing your chat...' : 'Drop your chat export here'}
@@ -118,10 +118,11 @@ export const FileUploader: React.FC = () => {
           </h3>
           <ol className="text-sm text-gray-600 dark:text-gray-400 space-y-2 lg:space-y-1 text-left lg:text-center max-w-md mx-auto">
             <li>1. Open the chat in WhatsApp</li>
-            <li>2. Tap the menu (⋮) and select "More"</li>
-            <li>3. Choose "Export chat"</li>
+            <li>2. Tap the contact info</li>
+            <li>3. Scroll down</li>
+            <li>4. Choose "Export chat"</li>
             <li>4. Select "Without media"</li>
-            <li>5. Upload the generated .txt file here</li>
+            <li>6. Upload the generated .txt file here</li>
           </ol>
         </div>
       </div>
