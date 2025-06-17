@@ -18,12 +18,19 @@ export const useTheme = () => {
     }
   }, [theme]);
 
-  // Only check system preference on initial mount if no theme is persisted
+  // Check system preference and listen for changes
   useEffect(() => {
     // Check if matchMedia is supported
     if (typeof window.matchMedia !== 'function') {
       return; // Skip system theme detection if matchMedia not available
     }
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    
+    // Handler for system theme changes
+    const handleSystemThemeChange = (e: MediaQueryListEvent) => {
+      setTheme(e.matches ? 'dark' : 'light');
+    };
 
     // Check if there's a persisted theme preference
     const storedData = localStorage.getItem('chatanalyzer-ui');
@@ -31,12 +38,18 @@ export const useTheme = () => {
     
     // Only apply system preference if no theme was previously chosen
     if (!hasPersistedTheme) {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
       if (mediaQuery.matches) {
         setTheme('dark');
       }
     }
-    // Remove the listener that was overriding user choice
+
+    // Add listener for system theme changes
+    mediaQuery.addEventListener('change', handleSystemThemeChange);
+
+    // Cleanup listener on unmount
+    return () => {
+      mediaQuery.removeEventListener('change', handleSystemThemeChange);
+    };
   }, [setTheme]);
 
   return { theme, toggleTheme };

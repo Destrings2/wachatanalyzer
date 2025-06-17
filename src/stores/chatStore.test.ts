@@ -197,7 +197,7 @@ describe('chatStore', () => {
 
       await loadChatFile(file);
 
-      expect(mockParseWhatsAppChatWithWorker).toHaveBeenCalledWith(fileContent);
+      expect(mockParseWhatsAppChatWithWorker).toHaveBeenCalledWith(fileContent, expect.any(Function));
     });
 
     it('calls analyzer with parsed data', async () => {
@@ -361,7 +361,7 @@ describe('chatStore', () => {
 
       await loadChatFile(file);
 
-      expect(mockParseWhatsAppChatWithWorker).toHaveBeenCalledWith(largeContent);
+      expect(mockParseWhatsAppChatWithWorker).toHaveBeenCalledWith(largeContent, expect.any(Function));
     });
 
     it('handles empty files', async () => {
@@ -371,7 +371,7 @@ describe('chatStore', () => {
 
       await loadChatFile(file);
 
-      expect(mockParseWhatsAppChatWithWorker).toHaveBeenCalledWith('');
+      expect(mockParseWhatsAppChatWithWorker).toHaveBeenCalledWith('', expect.any(Function));
     });
 
     it('handles files with special characters', async () => {
@@ -382,7 +382,7 @@ describe('chatStore', () => {
 
       await loadChatFile(file);
 
-      expect(mockParseWhatsAppChatWithWorker).toHaveBeenCalledWith(specialContent);
+      expect(mockParseWhatsAppChatWithWorker).toHaveBeenCalledWith(specialContent, expect.any(Function));
     });
   });
 
