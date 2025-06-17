@@ -90,7 +90,7 @@ export const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex lg:flex-row flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex lg:flex-row flex-col lg:h-screen lg:overflow-hidden">
       {/* Skip to content link for screen readers */}
       <a
         href="#main-content"
@@ -111,7 +111,7 @@ export const Dashboard: React.FC = () => {
       {/* Sidebar */}
       <aside className={clsx(
         'bg-white dark:bg-gray-800 transition-all duration-300 overflow-hidden',
-        'lg:relative lg:translate-x-0',
+        'lg:relative lg:translate-x-0 lg:flex-shrink-0',
         // Desktop behavior
         'lg:flex lg:flex-col lg:h-full',
         sidebarCollapsed ? 'lg:w-18' : 'lg:w-64',
