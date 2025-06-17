@@ -189,9 +189,9 @@ export const Dashboard: React.FC = () => {
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 bg-gray-50 dark:bg-gray-900">
+      <div className="flex-1 flex flex-col min-w-0 bg-gray-50 dark:bg-gray-900 lg:overflow-hidden">
         {/* Header */}
-        <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div className="px-4 lg:px-6 py-4 flex items-center justify-between">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-3 lg:gap-0 lg:block">
