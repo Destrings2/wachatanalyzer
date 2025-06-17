@@ -110,35 +110,51 @@ export const Dashboard: React.FC = () => {
 
       {/* Sidebar */}
       <aside className={clsx(
-        'bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-300',
+        'bg-white dark:bg-gray-800 transition-all duration-300 overflow-hidden',
         'lg:relative lg:translate-x-0',
         // Desktop behavior
         'lg:flex lg:flex-col lg:h-full',
-        sidebarCollapsed ? 'lg:w-16' : 'lg:w-64',
+        sidebarCollapsed ? 'lg:w-18' : 'lg:w-64',
         // Mobile behavior
         'fixed top-0 left-0 min-h-screen h-dvh z-50 lg:z-auto',
         sidebarCollapsed ? '-translate-x-full lg:translate-x-0' : 'translate-x-0 w-64'
       )}
       style={{ height: '100dvh', minHeight: '100vh' }}>
-        <div className="p-4 flex-1 overflow-y-auto">
-          <div className="flex items-center justify-between mb-8">
-            <h1 className={clsx(
-              'font-bold text-gray-900 dark:text-white transition-all duration-300',
-              sidebarCollapsed ? 'text-sm lg:block hidden' : 'text-xl'
-            )}>
-              {sidebarCollapsed ? 'CA' : 'Chat Analyzer'}
-            </h1>
-            <button
-              onClick={toggleSidebar}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors touch-manipulation focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              aria-label={sidebarCollapsed ? "Expand navigation" : "Collapse navigation"}
-              aria-expanded={!sidebarCollapsed}
-            >
-              {sidebarCollapsed ? <Menu className="w-5 h-5" /> : <X className="w-5 h-5" />}
-            </button>
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+          <div className={clsx(
+            'flex items-center mb-6',
+            sidebarCollapsed ? 'justify-center px-2 py-4' : 'justify-between px-4 pt-4'
+          )}>
+            {sidebarCollapsed ? (
+              <button
+                onClick={toggleSidebar}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors touch-manipulation focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-gray-700 dark:text-gray-300"
+                aria-label="Expand navigation"
+                aria-expanded={false}
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+            ) : (
+              <>
+                <h1 className="font-bold text-gray-900 dark:text-white text-xl">
+                  Chat Analyzer
+                </h1>
+                <button
+                  onClick={toggleSidebar}
+                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors touch-manipulation focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-gray-700 dark:text-gray-300"
+                  aria-label="Collapse navigation"
+                  aria-expanded={true}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </>
+            )}
           </div>
 
-          <nav className="space-y-2" role="navigation" aria-label="Chart selection">
+          <nav className={clsx(
+            'space-y-2',
+            sidebarCollapsed ? 'px-2' : 'px-4'
+          )} role="navigation" aria-label="Chart selection">
             {chartTypes.map((chart, index) => (
               <button
                 key={chart.id}
@@ -150,14 +166,17 @@ export const Dashboard: React.FC = () => {
                   }
                 }}
                 className={clsx(
-                  'w-full flex items-center gap-3 px-3 py-3 lg:py-2 rounded-lg transition-all duration-200 touch-manipulation slide-in-left group focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
+                  'w-full flex items-center gap-3 rounded-lg transition-all duration-200 touch-manipulation slide-in-left group focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
+                  sidebarCollapsed ? 'justify-center px-0 py-3' : 'px-3 py-3 lg:py-2',
                   selectedChart === chart.id
                     ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 scale-in'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:translate-x-1'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300',
+                  !sidebarCollapsed && 'hover:translate-x-1'
                 )}
                 style={{ animationDelay: `${index * 50}ms` }}
                 aria-pressed={selectedChart === chart.id}
                 aria-label={`View ${chart.name} chart`}
+                title={sidebarCollapsed ? chart.name : undefined}
               >
                 <span className="text-xl flex-shrink-0 transition-transform duration-200 group-hover:scale-110">{chart.icon}</span>
                 {(!sidebarCollapsed || window.innerWidth < 1024) && (
@@ -179,7 +198,7 @@ export const Dashboard: React.FC = () => {
                 {/* Mobile menu button */}
                 <button
                   onClick={toggleSidebar}
-                  className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors touch-manipulation focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors touch-manipulation focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-gray-700 dark:text-gray-300"
                   aria-label="Toggle navigation menu"
                   aria-expanded={!sidebarCollapsed}
                 >
