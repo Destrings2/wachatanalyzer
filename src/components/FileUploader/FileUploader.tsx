@@ -5,7 +5,7 @@ import { clsx } from 'clsx';
 
 export const FileUploader: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
-  const { loadChatFile, isLoading, error } = useChatStore();
+  const { loadChatFile, isLoading, error, progress } = useChatStore();
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -92,8 +92,20 @@ export const FileUploader: React.FC = () => {
                 {isLoading ? 'Processing your chat...' : 'Drop your chat export here'}
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                or tap to browse for a .txt file
+                {isLoading ? `${Math.round(progress)}% complete` : 'or tap to browse for a .txt file'}
               </p>
+              
+              {/* Progress bar */}
+              {isLoading && (
+                <div className="mt-4 w-full max-w-xs mx-auto">
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                    <div 
+                      className="h-full bg-blue-500 transition-all duration-300 ease-out rounded-full"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">

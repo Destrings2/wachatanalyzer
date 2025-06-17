@@ -1,6 +1,9 @@
 import { ParsedChat, Message, Call, Participant, ChatMetadata } from '../types';
 
-export function parseWhatsAppChatWithWorker(content: string): Promise<ParsedChat> {
+export function parseWhatsAppChatWithWorker(
+  content: string, 
+  onProgress?: (progress: number) => void
+): Promise<ParsedChat> {
   return new Promise((resolve, reject) => {
     const worker = new Worker(
       new URL('../workers/parser.worker.ts', import.meta.url),
@@ -45,8 +48,8 @@ export function parseWhatsAppChatWithWorker(content: string): Promise<ParsedChat
           break;
           
         case 'progress':
-          // Could emit progress events here if needed
-          console.log(`Parsing progress: ${progress}%`);
+          // Emit progress events to callback
+          onProgress?.(progress);
           break;
       }
     };

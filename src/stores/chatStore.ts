@@ -46,8 +46,10 @@ export const useChatStore = create<ChatStore>((set) => ({
       // Read file content in chunks for large files
       const text = await file.text();
       
-      // Parse chat data using Web Worker
-      const parsedData = await parseWhatsAppChatWithWorker(text);
+      // Parse chat data using Web Worker with progress updates
+      const parsedData = await parseWhatsAppChatWithWorker(text, (progress) => {
+        set({ progress });
+      });
       
       // Analyze chat data in main thread (could also be moved to worker)
       const analytics = analyzeChat(parsedData);
