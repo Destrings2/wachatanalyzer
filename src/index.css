@@ -1,0 +1,262 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+/* Mobile optimization utilities */
+@layer base {
+  /* Improved touch targets for mobile */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+  
+  /* Better text rendering on mobile */
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+  
+  /* Prevent horizontal scroll on mobile and ensure full height */
+  html {
+    overflow-x: hidden;
+    height: 100%;
+    background-color: rgb(249 250 251); /* bg-gray-50 */
+  }
+  
+  @media (prefers-color-scheme: dark) {
+    html {
+      background-color: #0f172a; /* cosmic-900 */
+    }
+  }
+  
+  .dark html {
+    background-color: #0f172a; /* cosmic-900 */
+  }
+  
+  body {
+    overflow-x: hidden;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    background-color: rgb(249 250 251); /* bg-gray-50 */
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(217, 70, 239, 0.15) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, rgba(217, 70, 239, 0.15) 0px, transparent 50%);
+    background-attachment: fixed;
+  }
+  
+  @media (prefers-color-scheme: dark) {
+    body {
+      background-color: #0f172a; /* cosmic-900 */
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(217, 70, 239, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+        radial-gradient(at 0% 100%, rgba(217, 70, 239, 0.15) 0px, transparent 50%);
+    }
+  }
+  
+  .dark body {
+    background-color: #0f172a; /* cosmic-900 */
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(217, 70, 239, 0.15) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, rgba(217, 70, 239, 0.15) 0px, transparent 50%);
+  }
+  
+  /* Dynamic viewport height support */
+  @supports (height: 100dvh) {
+    body {
+      min-height: 100dvh;
+    }
+  }
+  
+  /* Ensure root element fills viewport */
+  #root {
+    min-height: 100vh;
+    isolation: isolate;
+  }
+  
+  @supports (height: 100dvh) {
+    #root {
+      min-height: 100dvh;
+    }
+  }
+  
+  /* Better tap highlights */
+  button, input, select, textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Improved scrolling on iOS */
+  .scroll-smooth {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@layer utilities {
+  /* Dynamic viewport height utility with fallback */
+  .h-dvh {
+    height: 100vh;
+  }
+  
+  @supports (height: 100dvh) {
+    .h-dvh {
+      height: 100dvh;
+    }
+  }
+  
+  .min-h-dvh {
+    min-height: 100vh;
+  }
+  
+  @supports (height: 100dvh) {
+    .min-h-dvh {
+      min-height: 100dvh;
+    }
+  }
+  /* Custom mobile-first responsive utilities */
+  .mobile-padding {
+    @apply px-4 lg:px-6;
+  }
+  
+  .mobile-text {
+    @apply text-sm lg:text-base;
+  }
+  
+  .mobile-heading {
+    @apply text-lg lg:text-xl;
+  }
+  
+  /* Better mobile form controls */
+  .mobile-input {
+    @apply py-3 lg:py-2 text-base lg:text-sm;
+  }
+  
+  /* Mobile-friendly card spacing */
+  .mobile-card {
+    @apply p-4 lg:p-6;
+  }
+  
+  /* Safe area for devices with notches */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  /* Professional animations and transitions */
+  .fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  
+  .slide-in-right {
+    animation: slideInRight 0.3s ease-out;
+  }
+  
+  .slide-in-left {
+    animation: slideInLeft 0.3s ease-out;
+  }
+  
+  .bounce-in {
+    animation: bounceIn 0.4s ease-out;
+  }
+  
+  .scale-in {
+    animation: scaleIn 0.2s ease-out;
+  }
+  
+  /* Smooth hover effects */
+  .hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+  
+  /* Loading shimmer effect */
+  .shimmer {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+  
+  .dark .shimmer {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    background-size: 200% 100%;
+  }
+
+  /* Hide scrollbars */
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Safari and Chrome */
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { 
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from { 
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
