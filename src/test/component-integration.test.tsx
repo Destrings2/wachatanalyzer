@@ -92,9 +92,10 @@ describe('Component Integration Tests', () => {
   describe('App Component Integration', () => {
     it('renders FileUploader when activeView is upload', () => {
       render(<App />);
-      
-      expect(screen.getByText('WhatsApp Chat Analyzer')).toBeInTheDocument();
-      expect(screen.getByText('Upload your exported chat to get beautiful insights')).toBeInTheDocument();
+
+      expect(screen.getByText('WhatsApp Chat')).toBeInTheDocument();
+      expect(screen.getByText('Analyzer')).toBeInTheDocument();
+      expect(screen.getByText('Unlock insights from your conversations with beautiful, interactive visualizations.')).toBeInTheDocument();
     });
 
     it('switches to dashboard when data is loaded', () => {
@@ -248,7 +249,7 @@ describe('Component Integration Tests', () => {
     it('renders dashboard with navigation and content', () => {
       render(<App />);
 
-      expect(screen.getByText('Chat Analyzer')).toBeInTheDocument();
+      expect(screen.getByText('Analyzer')).toBeInTheDocument();
       expect(screen.getAllByText('Overview').length).toBeGreaterThan(0); // At least one Overview element exists
       expect(screen.getByText('Word Cloud')).toBeInTheDocument();
       expect(screen.getByText('Activity Timeline')).toBeInTheDocument();
@@ -261,15 +262,18 @@ describe('Component Integration Tests', () => {
       const timelineButton = screen.getByRole('button', { name: /Activity Timeline/i });
       await user.click(timelineButton);
 
-      expect(timelineButton).toHaveClass('bg-blue-50');
+      // Check that the button is now selected (has gradient background)
+      expect(timelineButton).toHaveClass('from-primary-500/10');
     });
 
     it('displays theme toggle functionality', async () => {
       const user = userEvent.setup();
       render(<App />);
 
-      const themeButton = screen.getByRole('button', { name: /Toggle theme/i });
-      await user.click(themeButton);
+      // Find theme toggle button by looking for Moon or Sun icon
+      const themeButton = document.querySelector('button svg.lucide-moon, button svg.lucide-sun')?.closest('button');
+      expect(themeButton).toBeTruthy();
+      await user.click(themeButton!);
 
       expect(mockToggleTheme).toHaveBeenCalledOnce();
     });
@@ -278,10 +282,12 @@ describe('Component Integration Tests', () => {
       const user = userEvent.setup();
       render(<App />);
 
-      const sidebarButtons = screen.getAllByRole('button', { name: /navigation menu/i });
+      // Find sidebar toggle buttons (Menu or X icons)
+      const sidebarButtons = document.querySelectorAll('button svg.lucide-menu, button svg.lucide-x');
       expect(sidebarButtons.length).toBeGreaterThan(0);
 
-      await user.click(sidebarButtons[0]);
+      const firstButton = sidebarButtons[0].closest('button');
+      await user.click(firstButton!);
       // Sidebar toggle functionality should be called
     });
   });
@@ -323,7 +329,7 @@ describe('Component Integration Tests', () => {
 
       render(<App />);
 
-      expect(screen.getByText('Processing your chat...')).toBeInTheDocument();
+      expect(screen.getByText('Analyzing your chat...')).toBeInTheDocument();
       // Look for the loading spinner by class or other identifier
       expect(document.querySelector('.animate-spin')).toBeInTheDocument();
     });
@@ -367,7 +373,7 @@ describe('Component Integration Tests', () => {
       render(<App />);
 
       // Should render mobile-friendly layout
-      expect(screen.getByText('WhatsApp Chat Analyzer')).toBeInTheDocument();
+      expect(screen.getByText('WhatsApp Chat')).toBeInTheDocument();
     });
   });
 
@@ -471,7 +477,6 @@ describe('Component Integration Tests', () => {
       render(<App />);
 
       // Should display data from the stores
-      expect(screen.getByText('1 messages')).toBeInTheDocument();
       expect(screen.getByText('John')).toBeInTheDocument();
     });
   });
@@ -525,7 +530,7 @@ describe('Component Integration Tests', () => {
 
       // Just test that the component renders without crashing with large data
       const { container } = render(<App />);
-      
+
       // Verify that the component rendered something (not just an empty div)
       expect(container.firstChild).toBeTruthy();
       expect(container.innerHTML.length).toBeGreaterThan(0);

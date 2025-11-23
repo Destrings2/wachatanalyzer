@@ -564,7 +564,7 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
         top: 20,
         right: separateBySender ? (isMobile ? 20 : 150) : (isMobile ? 10 : 30),
         bottom: isMobile ? 80 : 60,
-        left: isMobile ? 40 : 60
+        left: isMobile ? 40 : 100
       };
       const containerWidth = Math.min(availableWidth - 20, isMobile ? 380 : 800);
       const width = containerWidth - margin.left - margin.right;
@@ -669,7 +669,7 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
       if (!isMobile) {
         g.append('text')
           .attr('transform', 'rotate(-90)')
-          .attr('y', -40)
+          .attr('y', -80)
           .attr('x', -height / 2)
           .attr('text-anchor', 'middle')
           .style('fill', isDark ? '#9CA3AF' : '#6B7280')
