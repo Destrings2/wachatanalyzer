@@ -152,7 +152,6 @@ describe('FileUploader', () => {
     render(<FileUploader />);
 
     const input = screen.getByDisplayValue('');
-    const dropZone = screen.getByText('Analyzing your chat...').closest('div');
 
     expect(input).toBeDisabled();
   });

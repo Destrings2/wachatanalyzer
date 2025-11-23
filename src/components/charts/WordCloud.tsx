@@ -7,7 +7,6 @@ import { useUIStore } from '../../stores/uiStore';
 import { getSenderColor } from '../../utils/chartUtils';
 import { BookOpen, Award, Brain, MessageCircle, TrendingUp } from 'lucide-react';
 import Sentiment from 'sentiment';
-import { GlassContainer } from '../common/GlassContainer';
 
 interface WordCloudProps {
   analytics: ProcessedAnalytics;
@@ -500,7 +499,7 @@ export const WordCloud: React.FC<WordCloudProps> = ({ analytics, messages = [] }
           .attr('font-size', `${d.fontSize} px`);
         d3.selectAll('.word-cloud-tooltip').remove();
       })
-      .on('click', (_, d) => {
+      .on('click', () => {
         // Handle click if needed
       });
 

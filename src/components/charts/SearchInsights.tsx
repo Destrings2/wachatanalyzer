@@ -5,9 +5,9 @@ import { useD3 } from '../../hooks/useD3';
 import { useUIStore } from '../../stores/uiStore';
 import { useFilterStore } from '../../stores/filterStore';
 import { useChatStore } from '../../stores/chatStore';
-import { getSenderColor, getChartColors } from '../../utils/chartUtils';
+import { getSenderColor } from '../../utils/chartUtils';
 import { differenceInDays } from 'date-fns';
-import { Search, Users, Clock, MessageSquare, TrendingUp, Target, Zap, Info } from 'lucide-react';
+import { Search, Users, Clock, MessageSquare, TrendingUp, Target, Zap } from 'lucide-react';
 
 interface SearchInsightsProps {
   analytics: ProcessedAnalytics;
@@ -758,14 +758,12 @@ interface TemporalPatternChartProps {
 
 const TemporalPatternChart: React.FC<TemporalPatternChartProps> = ({
   data,
-  originalPeak,
   filteredPeak,
   patternSimilarity,
-  theme
+  theme,
 }) => {
   const ref = useD3(
     (svg) => {
-      const colors = getChartColors(theme);
       const width = 280;
       const height = 120;
       const margin = { top: 10, right: 10, bottom: 20, left: 10 };

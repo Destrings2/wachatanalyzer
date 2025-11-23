@@ -5,7 +5,7 @@ import { useD3 } from '../../hooks/useD3';
 import { useTheme } from '../../hooks/useTheme';
 import { TrendingUp, TrendingDown, Minus, Users, Heart, X } from 'lucide-react';
 import { GlassContainer } from '../common/GlassContainer';
-import { MetricCard } from './ResponsePatterns'; // We should probably move MetricCard to common if used here too
+import { MetricCard } from '../common/MetricCard';
 // Actually, let's duplicate MetricCard locally or move it to common. 
 // The user instruction was to extract reusable components. 
 // I'll assume I should have moved MetricCard to common. 
@@ -78,50 +78,6 @@ const EMOJI_SENTIMENT: Record<string, number> = {
   '😡': -0.9, '🤬': -1.0, '💔': -0.9, '👎': -0.7, '😱': -0.7, '😨': -0.6,
 };
 
-// Tooltip component (Local definition to avoid circular dependency if I don't move it)
-const Tooltip: React.FC<{ content: string; children: React.ReactNode; className?: string }> = ({
-  content,
-  children,
-  className = ''
-}) => (
-  <div className={`group relative inline-block ${className}`}>
-    {children}
-    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900/90 dark:bg-gray-700/90 backdrop-blur-md text-white text-sm rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 border border-white/10 shadow-xl">
-      {content}
-      <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900/90 dark:border-t-gray-700/90"></div>
-    </div>
-  </div>
-);
-
-// Animated metric card
-const MetricCard: React.FC<{
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string;
-  color: string;
-  description?: string;
-  trend?: string;
-}> = ({ icon: Icon, label, value, color, description, trend }) => (
-  <Tooltip content={description || label}>
-    <div className={`bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl rounded-2xl p-6 shadow-sm border border-white/20 hover:shadow-md transition-all duration-300 group hover:-translate-y-1`}>
-      <div className="flex items-center justify-between mb-3">
-        <div className={`p-2 rounded-xl bg-${color}-100 dark:bg-${color}-900/30 group-hover:scale-110 transition-transform duration-300`}>
-          <Icon className={`h-5 w-5 text-${color}-600 dark:text-${color}-400`} />
-        </div>
-        {trend && (
-          <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 bg-white/50 dark:bg-gray-800/50 px-2 py-1 rounded-lg">
-            <TrendingUp className="h-3 w-3" />
-            {trend}
-          </span>
-        )}
-      </div>
-      <div>
-        <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">{label}</p>
-        <p className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{value}</p>
-      </div>
-    </div>
-  </Tooltip>
-);
 
 export const EmojiAnalysis: React.FC<EmojiAnalysisProps> = ({ analytics, messages = [] }) => {
   const { theme } = useTheme();

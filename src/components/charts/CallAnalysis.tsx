@@ -16,8 +16,8 @@ interface CallAnalysisProps {
 
 type AnalysisView = 'overview' | 'duration' | 'patterns' | 'success' | 'participants';
 
-export const CallAnalysis: React.FC<CallAnalysisProps> = ({ analytics, isLoading }) => {
-  const { rawCalls, metadata } = useChatStore();
+export const CallAnalysis: React.FC<CallAnalysisProps> = () => {
+  const { rawCalls } = useChatStore();
   const { theme } = useTheme();
   const [activeView, setActiveView] = useState<AnalysisView>('overview');
   const isDark = theme === 'dark';
@@ -80,7 +80,7 @@ export const CallAnalysis: React.FC<CallAnalysisProps> = ({ analytics, isLoading
     // Hourly success rate
     const hourlySuccess: Record<number, { total: number; completed: number }> = {};
     rawCalls.forEach(call => {
-      const hour = call.timestamp.getHours();
+      const hour = new Date(call.timestamp).getHours();
       if (!hourlySuccess[hour]) {
         hourlySuccess[hour] = { total: 0, completed: 0 };
       }
@@ -341,7 +341,7 @@ export const CallAnalysis: React.FC<CallAnalysisProps> = ({ analytics, isLoading
             <div className="space-y-3">
               {Object.entries(callStats.callsByInitiator)
                 .sort(([, a], [, b]) => b - a)
-                .map(([initiator, count], idx) => (
+                .map(([initiator, count]) => (
                   <div key={initiator} className="flex items-center justify-between p-3 bg-white/50 dark:bg-gray-800/50 rounded-xl border border-white/10">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-600 dark:text-primary-400 font-bold">

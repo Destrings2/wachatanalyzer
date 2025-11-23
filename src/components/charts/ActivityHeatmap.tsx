@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { ProcessedAnalytics, Message } from '../../types';
-import { format, startOfDay, eachDayOfInterval, addDays, startOfWeek, endOfWeek, getDay, startOfYear, endOfYear, getYear } from 'date-fns';
+import { format, startOfDay, eachDayOfInterval, getDay, startOfYear, endOfYear, getYear } from 'date-fns';
 import { useChatStore } from '../../stores/chatStore';
 import { useFilterStore } from '../../stores/filterStore';
-import { Info, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { Info } from 'lucide-react';
 import clsx from 'clsx';
 import { GlassContainer } from '../common/GlassContainer';
 import { Tooltip } from '../common/Tooltip';
@@ -38,7 +38,7 @@ const getActivityIntensity = (activity: number, maxActivity: number) => {
 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ analytics, messages, isLoading }) => {
+export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ analytics, messages }) => {
   const { metadata, analytics: rawAnalytics } = useChatStore();
   const { searchKeyword } = useFilterStore();
 

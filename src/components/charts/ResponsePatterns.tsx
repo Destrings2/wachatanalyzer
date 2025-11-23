@@ -4,26 +4,21 @@ import { ProcessedAnalytics, Message, Theme } from '../../types';
 import { useD3 } from '../../hooks/useD3';
 import { useTheme } from '../../hooks/useTheme';
 import { useUIStore } from '../../stores/uiStore';
-import { getSenderColor, getChartColors } from '../../utils/chartUtils';
+import { getSenderColor } from '../../utils/chartUtils';
 import { differenceInMinutes, differenceInHours, isSameDay } from 'date-fns';
 import {
-  Clock,
-  MessageCircle,
-  Users,
   TrendingUp,
-  Zap,
-  Target,
-  Network,
+  MessageCircle,
   Timer,
+  Zap,
+  Network,
   Check,
-  Info,
   ArrowRight
 } from 'lucide-react';
-import clsx from 'clsx';
 import { GlassContainer } from '../common/GlassContainer';
 import { ChartControls } from '../common/ChartControls';
 import { Tooltip } from '../common/Tooltip';
-import { InsightCard } from '../common/InsightCard';
+
 
 interface ResponsePatternsProps {
   analytics: ProcessedAnalytics;
@@ -308,7 +303,6 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
       const height = isMobile ? 250 : 300;
 
       svg.selectAll('*').remove();
-      const colors = getChartColors(theme);
       const isDark = theme === 'dark';
 
       const g = svg
@@ -571,7 +565,6 @@ export const ResponsePatterns: React.FC<ResponsePatternsProps> = ({
       const height = isMobile ? 250 : 300;
 
       svg.selectAll('*').remove();
-      const colors = getChartColors(theme);
       const isDark = theme === 'dark';
 
       const g = svg
