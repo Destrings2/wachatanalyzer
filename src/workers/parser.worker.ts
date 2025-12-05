@@ -4,7 +4,9 @@ import { Message, Call, Participant } from '../types';
 const CHUNK_SIZE = 1000;
 
 // Regular expression to match WhatsApp message format
+// Regular expression to match WhatsApp message format
 const MESSAGE_REGEX = /\[(\d{1,2}\/\d{1,2}\/\d{4}), (\d{1,2}:\d{2}:\d{2})\] (.+?): (.+)/;
+const ANDROID_MESSAGE_REGEX = /(\d{1,2}\/\d{1,2}\/\d{4}), (\d{1,2}:\d{2}) - (.+?): (.+)/;
 
 // Helper function to extract emojis from text
 function extractEmojis(text: string): string[] {
@@ -21,10 +23,10 @@ function extractEmojis(text: string): string[] {
 
       // Filter out standalone modifiers, ZWJ, and variation selectors
       if (emoji &&
-          emoji !== '\u200D' && // ZWJ
-          !/^[\u{1F3FB}-\u{1F3FF}]$/u.test(emoji) && // Standalone skin tone
-          !/^[\u{FE00}-\u{FE0F}]$/u.test(emoji) && // Variation selector
-          !/^[\u{2640}\u{2642}]$/u.test(emoji) // Standalone gender symbols
+        emoji !== '\u200D' && // ZWJ
+        !/^[\u{1F3FB}-\u{1F3FF}]$/u.test(emoji) && // Standalone skin tone
+        !/^[\u{FE00}-\u{FE0F}]$/u.test(emoji) && // Variation selector
+        !/^[\u{2640}\u{2642}]$/u.test(emoji) // Standalone gender symbols
       ) {
         matches.push(emoji);
       }
@@ -88,7 +90,7 @@ function detectMessageType(content: string): Message['type'] {
 function parseDate(dateStr: string, timeStr: string): Date {
   const [day, month, year] = dateStr.split('/').map(Number);
   const [hours, minutes, seconds] = timeStr.split(':').map(Number);
-  return new Date(year, month - 1, day, hours, minutes, seconds);
+  return new Date(year, month - 1, day, hours, minutes, seconds || 0);
 }
 
 // Parse call duration from message
@@ -199,6 +201,19 @@ async function parseWhatsAppChat(content: string): Promise<void> {
     content: string;
   } | null = null;
 
+  // Detect message format from first 50 lines
+  let messageRegex = MESSAGE_REGEX;
+  for (let i = 0; i < Math.min(lines.length, 50); i++) {
+    if (MESSAGE_REGEX.test(lines[i])) {
+      messageRegex = MESSAGE_REGEX;
+      break;
+    }
+    if (ANDROID_MESSAGE_REGEX.test(lines[i])) {
+      messageRegex = ANDROID_MESSAGE_REGEX;
+      break;
+    }
+  }
+
   let processed = 0;
   let chunkIndex = 0;
   let messagesInCurrentChunk: Message[] = [];
@@ -206,7 +221,7 @@ async function parseWhatsAppChat(content: string): Promise<void> {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    const match = line.match(MESSAGE_REGEX);
+    const match = line.match(messageRegex);
 
     if (match) {
       // Process previous message if exists

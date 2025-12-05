@@ -59,6 +59,32 @@ describe('WhatsApp Chat Parser', () => {
       expect(message2.content).toBe('Hi there!')
     })
 
+    it('should parse Android WhatsApp message format', async () => {
+      const chatContent = `05/12/2023, 02:21 - Lombardo: Listo
+05/12/2023, 02:21 - Lombardo: Como estas`
+
+      await parseWhatsAppChatFunction(chatContent)
+
+      const chunkCalls = mockPostMessage.mock.calls.filter(
+        call => call[0].type === 'chunk'
+      )
+
+      expect(chunkCalls.length).toBeGreaterThan(0)
+      const messages = chunkCalls[0][0].data.messages
+      expect(messages.length).toBe(2)
+
+      expect(messages[0].sender).toBe('Lombardo')
+      expect(messages[0].content).toBe('Listo')
+
+      // Verify date parsing (missing seconds should default to 00)
+      expect(messages[0].datetime.getFullYear()).toBe(2023)
+      expect(messages[0].datetime.getMonth()).toBe(11) // December
+      expect(messages[0].datetime.getDate()).toBe(5)
+      expect(messages[0].datetime.getHours()).toBe(2)
+      expect(messages[0].datetime.getMinutes()).toBe(21)
+      expect(messages[0].datetime.getSeconds()).toBe(0)
+    })
+
     it('should handle multi-line messages', async () => {
       const chatContent = `[15/01/2024, 10:30:00] John Doe: This is a long message
 that spans multiple lines
