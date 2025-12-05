@@ -298,6 +298,34 @@ and has line breaks`
       expect(calls[0].duration).toBe(0)
       expect(calls[1].duration).toBe(0)
     })
+
+    it('should parse Android call messages', async () => {
+      // Android format often lacks seconds and might differ in structure
+      const chatContent = `05/12/2023, 02:21 - Lombardo: Missed voice call
+05/12/2023, 02:22 - Missed video call
+05/12/2023, 02:23 - Voice call ended`
+
+      await parseWhatsAppChatFunction(chatContent)
+
+      const chunkCalls = mockPostMessage.mock.calls.filter(
+        call => call[0].type === 'chunk'
+      )
+
+      expect(chunkCalls.length).toBeGreaterThan(0)
+      const calls = chunkCalls[0][0].data.calls
+
+      // We expect 3 calls
+      expect(calls.length).toBe(3)
+
+      // Check first call (with sender)
+      expect(calls[0].initiator).toBe('Lombardo')
+      expect(calls[0].status).toBe('missed')
+      expect(calls[0].type).toBe('voice')
+
+      // Check second call (system style/no sender? - If this fails, we know the issue)
+      // Note: If parsed as system message, it might be skipped or have 'System' as sender?
+      // Our current regex requires a sender, so the 2nd and 3rd lines likely won't even be matched.
+    })
   })
 
   describe('Participant Processing', () => {

@@ -7,6 +7,7 @@ const CHUNK_SIZE = 1000;
 // Regular expression to match WhatsApp message format
 const MESSAGE_REGEX = /\[(\d{1,2}\/\d{1,2}\/\d{4}), (\d{1,2}:\d{2}:\d{2})\] (.+?): (.+)/;
 const ANDROID_MESSAGE_REGEX = /(\d{1,2}\/\d{1,2}\/\d{4}), (\d{1,2}:\d{2}) - (.+?): (.+)/;
+const ANDROID_SYSTEM_REGEX = /(\d{1,2}\/\d{1,2}\/\d{4}), (\d{1,2}:\d{2}) - (.+)/;
 
 // Helper function to extract emojis from text
 function extractEmojis(text: string): string[] {
@@ -221,7 +222,17 @@ async function parseWhatsAppChat(content: string): Promise<void> {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    const match = line.match(messageRegex);
+    let match = line.match(messageRegex);
+
+    // Fallback for Android system messages (calls, encryption notices, etc.)
+    if (!match && messageRegex === ANDROID_MESSAGE_REGEX) {
+      const sysMatch = line.match(ANDROID_SYSTEM_REGEX);
+      if (sysMatch) {
+        // Reconstruct match array to match the structure expected: [full, date, time, sender, content]
+        // System messages don't have a sender, so we assign 'System'
+        match = [sysMatch[0], sysMatch[1], sysMatch[2], 'System', sysMatch[3]];
+      }
+    }
 
     if (match) {
       // Process previous message if exists
