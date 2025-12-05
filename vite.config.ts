@@ -6,6 +6,9 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: '/wachatanalyzer/',
+  css: {
+    devSourcemap: true,
+  },
   worker: {
     format: 'es'
   }
