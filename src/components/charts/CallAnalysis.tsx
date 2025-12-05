@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ProcessedAnalytics } from '../../types';
-import { format } from 'date-fns';
+import { format, startOfDay, eachDayOfInterval, getDay, startOfYear, endOfYear, getYear } from 'date-fns';
 import { useChatStore } from '../../stores/chatStore';
 import { Phone, Video, Clock, Target } from 'lucide-react';
 import * as d3 from 'd3';
@@ -8,19 +8,37 @@ import { useD3 } from '../../hooks/useD3';
 import { useTheme } from '../../hooks/useTheme';
 import { GlassContainer } from '../common/GlassContainer';
 import { MetricCard } from '../common/MetricCard';
+import { Tooltip } from '../common/Tooltip';
+import clsx from 'clsx';
 
 interface CallAnalysisProps {
   analytics: ProcessedAnalytics;
   isLoading?: boolean;
 }
 
-type AnalysisView = 'overview' | 'duration' | 'patterns' | 'success' | 'participants';
+type AnalysisView = 'overview' | 'heatmap' | 'duration' | 'patterns' | 'success' | 'participants';
 
 export const CallAnalysis: React.FC<CallAnalysisProps> = () => {
-  const { rawCalls } = useChatStore();
+  const { rawCalls, metadata } = useChatStore();
   const { theme } = useTheme();
   const [activeView, setActiveView] = useState<AnalysisView>('overview');
   const isDark = theme === 'dark';
+
+  // Year navigation for heatmap
+  const availableYears = useMemo(() => {
+    if (!metadata) return [];
+    const startYear = getYear(metadata.dateRange.start);
+    const endYear = getYear(metadata.dateRange.end);
+    const years = [];
+    for (let year = startYear; year <= endYear; year++) {
+      years.push(year);
+    }
+    return years;
+  }, [metadata]);
+
+  const [selectedYear, setSelectedYear] = useState(() =>
+    availableYears.length > 0 ? availableYears[availableYears.length - 1] : new Date().getFullYear()
+  );
 
   const callStats = useMemo(() => {
     if (!rawCalls || rawCalls.length === 0) {
@@ -94,6 +112,69 @@ export const CallAnalysis: React.FC<CallAnalysisProps> = () => {
       ? (completedCalls.length / rawCalls.length) * 100
       : 0;
 
+    // Heatmap Data
+    const heatmapData = (() => {
+      if (!metadata) return null;
+
+      const yearStart = startOfYear(new Date(selectedYear, 0, 1));
+      const yearEnd = endOfYear(new Date(selectedYear, 11, 31));
+      const startDate = startOfDay(yearStart > metadata.dateRange.start ? yearStart : metadata.dateRange.start);
+      const endDate = startOfDay(yearEnd < metadata.dateRange.end ? yearEnd : metadata.dateRange.end);
+
+      const dailyActivityMap: Record<string, number> = {};
+      const weeks: ({ date: Date; dateKey: string; count: number } | null)[][] = [];
+      let currentWeek: ({ date: Date; dateKey: string; count: number } | null)[] = [];
+
+      // Populate daily activity
+      rawCalls.forEach(call => {
+        const callYear = getYear(call.timestamp);
+        if (callYear === selectedYear) {
+          const dateKey = format(call.timestamp, 'yyyy-MM-dd');
+          dailyActivityMap[dateKey] = (dailyActivityMap[dateKey] || 0) + 1;
+        }
+      });
+
+      const daysInterval = eachDayOfInterval({ start: startDate, end: endDate });
+
+      // Pad first week
+      const firstDayOfWeek = getDay(startDate);
+      for (let i = 0; i < firstDayOfWeek; i++) {
+        currentWeek.push(null);
+      }
+
+      let maxActivity = 0;
+      let activeDays = 0;
+
+      daysInterval.forEach(day => {
+        const dateKey = format(day, 'yyyy-MM-dd');
+        const count = dailyActivityMap[dateKey] || 0;
+
+        if (count > maxActivity) maxActivity = count;
+        if (count > 0) activeDays++;
+
+        currentWeek.push({ date: day, dateKey, count });
+
+        if (currentWeek.length === 7) {
+          weeks.push(currentWeek);
+          currentWeek = [];
+        }
+      });
+
+      if (currentWeek.length > 0) {
+        while (currentWeek.length < 7) {
+          currentWeek.push(null);
+        }
+        weeks.push(currentWeek);
+      }
+
+      return {
+        weeks,
+        maxActivity,
+        activeDays,
+        totalDays: daysInterval.length
+      };
+    })();
+
     return {
       totalDuration,
       avgDuration,
@@ -105,9 +186,10 @@ export const CallAnalysis: React.FC<CallAnalysisProps> = () => {
       callsByInitiator,
       dailyCalls,
       hourlySuccess,
-      completionRate
+      completionRate,
+      heatmapData
     };
-  }, [rawCalls]);
+  }, [rawCalls, metadata, selectedYear]);
 
   const formatDuration = (totalMinutes: number) => {
     const hours = Math.floor(totalMinutes / 60);
@@ -115,6 +197,30 @@ export const CallAnalysis: React.FC<CallAnalysisProps> = () => {
     if (hours > 0) return `${hours}h ${minutes}m`;
     return `${minutes}m`;
   };
+
+  const getActivityColor = (intensity: number) => {
+    switch (intensity) {
+      case 0: return 'bg-gray-100 dark:bg-gray-800';
+      case 1: return 'bg-emerald-200 dark:bg-emerald-900/40';
+      case 2: return 'bg-emerald-300 dark:bg-emerald-800/60';
+      case 3: return 'bg-emerald-400 dark:bg-emerald-700/80';
+      case 4: return 'bg-emerald-500 dark:bg-emerald-600';
+      default: return 'bg-gray-100 dark:bg-gray-800';
+    }
+  };
+
+  const getActivityIntensity = (count: number, max: number) => {
+    if (count === 0) return 0;
+    if (max === 0) return 0;
+    const percentage = count / max;
+    if (percentage < 0.25) return 1;
+    if (percentage < 0.5) return 2;
+    if (percentage < 0.75) return 3;
+    return 4;
+  };
+
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   // Render hourly patterns chart
   const renderHourlyPatterns = useD3((svg) => {
@@ -255,7 +361,7 @@ export const CallAnalysis: React.FC<CallAnalysisProps> = () => {
 
       {/* View Mode Tabs */}
       <div className="flex gap-2 p-1 bg-white/50 dark:bg-gray-900/50 rounded-xl backdrop-blur-sm border border-white/10 overflow-x-auto">
-        {(['overview', 'patterns', 'participants'] as const).map((mode) => (
+        {(['overview', 'heatmap', 'patterns', 'participants'] as const).map((mode) => (
           <button
             key={mode}
             onClick={() => setActiveView(mode)}
@@ -320,6 +426,123 @@ export const CallAnalysis: React.FC<CallAnalysisProps> = () => {
                 <div className="p-4 bg-white/50 dark:bg-gray-800/50 rounded-xl border border-white/10">
                   <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Average Call</div>
                   <div className="text-xl font-bold text-gray-900 dark:text-white">{formatDuration(callStats.avgDuration)}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeView === 'heatmap' && callStats.heatmapData && (
+          <div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Call Activity Heatmap</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Tracking {callStats.heatmapData.activeDays} active days in {selectedYear}
+                </p>
+              </div>
+
+              {availableYears.length > 1 && (
+                <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                  {availableYears.map(year => (
+                    <button
+                      key={year}
+                      onClick={() => setSelectedYear(year)}
+                      className={clsx(
+                        "px-3 py-1 text-xs font-medium rounded-md transition-all",
+                        selectedYear === year
+                          ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-400 shadow-sm'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                      )}
+                    >
+                      {year}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Intensity Legend */}
+            <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400 bg-white/50 dark:bg-gray-900/50 p-2 rounded-lg inline-flex backdrop-blur-sm border border-white/10 mb-4">
+              <span>Less</span>
+              <div className="flex gap-1">
+                {[0, 1, 2, 3, 4].map(intensity => (
+                  <div
+                    key={intensity}
+                    className={`w-3 h-3 rounded-sm ${getActivityColor(intensity)}`}
+                  />
+                ))}
+              </div>
+              <span>More</span>
+            </div>
+
+            {/* Heatmap Grid */}
+            <div className="bg-white/50 dark:bg-gray-800/50 rounded-xl p-4 overflow-x-auto border border-white/10">
+              <div className="min-w-max">
+                {/* Month labels */}
+                <div className="flex mb-2">
+                  <div className="w-8"></div>
+                  {callStats.heatmapData.weeks.map((week, weekIndex) => {
+                    const firstDay = week[0];
+                    if (!firstDay || weekIndex === 0 || firstDay.date.getDate() <= 7) {
+                      const monthLabel = weekIndex === 0 || (firstDay && firstDay.date.getDate() <= 7)
+                        ? monthNames[firstDay ? firstDay.date.getMonth() : 0]
+                        : '';
+                      return (
+                        <div key={weekIndex} className="w-4 text-xs font-medium text-gray-400 dark:text-gray-500 text-center">
+                          {monthLabel}
+                        </div>
+                      );
+                    }
+                    return <div key={weekIndex} className="w-4"></div>;
+                  })}
+                </div>
+
+                <div className="flex">
+                  {/* Day labels */}
+                  <div className="flex flex-col mr-2 gap-1">
+                    {dayNames.map((day, index) => (
+                      <div
+                        key={day}
+                        className={clsx(
+                          'w-6 h-3 text-[10px] font-medium text-gray-400 dark:text-gray-500 flex items-center',
+                          index % 2 === 1 ? 'opacity-100' : 'opacity-0'
+                        )}
+                      >
+                        {day}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Calendar grid */}
+                  <div className="flex gap-1">
+                    {callStats.heatmapData.weeks.map((week, weekIndex) => (
+                      <div key={weekIndex} className="flex flex-col gap-1">
+                        {week.map((day, dayIndex) => {
+                          if (!day) return <div key={dayIndex} className="w-4 h-3"></div>;
+
+                          const intensity = getActivityIntensity(day.count, callStats.heatmapData!.maxActivity);
+                          const tooltipText = `${format(day.date, 'MMM d, yyyy')}: ${day.count} calls`;
+                          const isInRange = metadata && day.date >= metadata.dateRange.start && day.date <= metadata.dateRange.end;
+
+                          return (
+                            <Tooltip
+                              key={day.dateKey}
+                              content={tooltipText}
+                            >
+                              <div
+                                className={clsx(
+                                  'w-4 h-3 rounded-[2px] cursor-pointer transition-all duration-200 hover:scale-125 hover:shadow-sm',
+                                  isInRange ? getActivityColor(intensity) : 'bg-gray-100/30 dark:bg-gray-800/30',
+                                  !isInRange && 'opacity-30'
+                                )}
+                              />
+                            </Tooltip>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
