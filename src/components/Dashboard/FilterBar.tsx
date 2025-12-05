@@ -130,7 +130,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
   };
 
   return (
-    <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl rounded-2xl p-4 shadow-sm border border-white/20">
+    <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl rounded-2xl p-4 shadow-sm border border-white/20 relative z-30">
       {/* Quick Filters */}
       <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b border-gray-200/50 dark:border-gray-700/50">
         <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center mr-2">
@@ -195,7 +195,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
             {showSuggestions && suggestions.length > 0 && (
               <div
                 ref={suggestionsRef}
-                className="absolute top-full mt-2 left-0 right-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-20 max-h-64 overflow-y-auto custom-scrollbar"
+                className="absolute top-full mt-2 left-0 right-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-50 max-h-64 overflow-y-auto custom-scrollbar"
               >
                 <div className="p-2">
                   <div className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2 px-2">Suggestions</div>
@@ -246,7 +246,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
             </button>
 
             {showSenderDropdown && (
-              <div className="absolute top-full mt-2 left-0 w-72 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-10 animate-in fade-in zoom-in-95">
+              <div className="absolute top-full mt-2 left-0 w-72 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-50 animate-in fade-in zoom-in-95">
                 <div className="p-2 max-h-64 overflow-y-auto custom-scrollbar">
                   {participants.map((participant) => (
                     <label
@@ -294,7 +294,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({ participants, dateRange })
             </button>
 
             {showTypeDropdown && (
-              <div className="absolute top-full mt-2 left-0 w-56 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-10 animate-in fade-in zoom-in-95">
+              <div className="absolute top-full mt-2 left-0 w-56 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-50 animate-in fade-in zoom-in-95">
                 <div className="p-2">
                   {messageTypeOptions.map((type) => (
                     <label
